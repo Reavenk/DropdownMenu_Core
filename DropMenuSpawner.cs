@@ -6,7 +6,7 @@ namespace PxPre
 {
     namespace DropMenu
     {
-        public class Spawner : MonoBehaviour
+        public class DropMenuSpawner : MonoBehaviour
         {
             public struct NodeCreationCache
             {
@@ -45,9 +45,9 @@ namespace PxPre
             { 
                 public List<NodeContext> spawnedSubmenus;
                 public RectTransform modalPlate;
-                public Spawner spawner;
+                public DropMenuSpawner spawner;
                 
-                public SpawnContext(Spawner spawner)
+                public SpawnContext(DropMenuSpawner spawner)
                 { 
                     this.spawner = spawner;
                 }
@@ -120,7 +120,7 @@ namespace PxPre
 
                 Vector3 [] corners = new Vector3[4];
                 rt.GetWorldCorners(corners);
-                DropdownCreationReturn dcr = CreateDropdownMenu(sc, parent, menu, corners[1], 0);
+                DropdownCreationReturn dcr = CreateDropdownMenu(sc, parent, menu, corners[0], 0);
 
                 return parent;
             }
@@ -211,7 +211,7 @@ namespace PxPre
                         txtText.rectTransform.sizeDelta = textSz;
                         //
                         maxXLabel = Mathf.Max(maxXLabel, textSz.x);
-                        fyMax = Mathf.Max(fyMax, textSz.y);
+                        fyMax = Mathf.Max(fyMax, textSz.y, this.props.minEntrySize);
                         //
                         ncc.text = txtText;
 
