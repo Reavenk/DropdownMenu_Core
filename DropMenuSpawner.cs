@@ -40,7 +40,6 @@ namespace PxPre
                 }
             }
 
-
             private class SpawnContext
             { 
                 public List<NodeContext> spawnedSubmenus;
@@ -63,7 +62,6 @@ namespace PxPre
 
                         spawnedSubmenus.RemoveAt(lastIdx);
                     }
-
                 }
 
                 public void Destroy()
