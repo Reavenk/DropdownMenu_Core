@@ -46,6 +46,11 @@ namespace PxPre
             { 
                 this.curr.AddAction(label, onSel);
             }
+
+            public void AddAction(Sprite icon, string label, System.Action onSel)
+            { 
+                this.curr.AddAction(icon, label, onSel);
+            }
         }
     }
 }

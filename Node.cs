@@ -45,7 +45,13 @@ namespace PxPre
 
             public Node AddAction(string label, System.Action onSel)
             { 
+                return this.AddAction(null, label, onSel);
+            }
+
+            public Node AddAction(Sprite icon, string label, System.Action onSel)
+            {
                 Node n = new Node(label, onSel);
+                n.sprite = icon;
                 this.AddChild(n);
                 return n;
             }

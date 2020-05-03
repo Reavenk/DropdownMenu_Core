@@ -151,6 +151,7 @@ namespace PxPre
                 UnityEngine.UI.Image imgShadow = goShadow.AddComponent<UnityEngine.UI.Image>();
                 imgShadow.sprite = this.props.shadow;
                 imgShadow.type = UnityEngine.UI.Image.Type.Sliced;
+                imgShadow.color = props.shadowColor;
                 RectTransform rtShadow = imgShadow.rectTransform;
                 rtShadow.pivot = new Vector2(0.0f, 1.0f);
                 rtShadow.anchorMin = new Vector2(0.0f, 1.0f);
@@ -302,7 +303,7 @@ namespace PxPre
                             arrow = true;
                         }
 
-                        fyMax += this.props.entryPadding.left + this.props.entryPadding.right;
+                        fyMax += this.props.entryPadding.top + this.props.entryPadding.bottom;
                         ncc.height = fyMax;
                     }
                     else if(n.type == Node.Type.Separator)
@@ -338,26 +339,31 @@ namespace PxPre
                 }
 
                 // Layout internals
-                float fY = this.props.entryPadding.top;
+                float fY = this.props.outerPadding.top;
 
                 float fX = this.props.entryPadding.left;
                 float xIcoStart = fX;
                 float xTextStart = fX + maxXIco;
-                if(maxXIco == 0.0f)
-                    xTextStart += this.props.textArrowPadding;
+                // Offset where the text starts
+                if(maxXIco != 0.0f)
+                    xTextStart += this.props.iconTextPadding;
 
+                // Define where the arrow would start
                 float xArrowIco = xTextStart + maxXLabel;
+                // If relevant, take into account the padding.
                 if(maxXSpawnArrow != 0.0f)
                     xArrowIco += this.props.textArrowPadding;
 
                 float xWidth = xArrowIco + maxXSpawnArrow + this.props.splitterPadding.right;
 
                 float xTextFromRight = this.props.splitterPadding.right;
-                if(xArrowIco > 0.0f)
-                    xTextFromRight += maxXSpawnArrow + this.props.textArrowPadding;
+                //if(xArrowIco > 0.0f)
+                //    xTextFromRight += maxXSpawnArrow + this.props.textArrowPadding;
 
+                xWidth += this.props.entryPadding.right;
                 atleastOne = false;
-                for(int i = 0; i < node.children.Count; ++i)
+                float finalMenuWidth = xWidth + this.props.outerPadding.left + this.props.outerPadding.right;
+                for (int i = 0; i < node.children.Count; ++i)
                 {
                     Node n = node.children[i];
                     NodeCreationCache ccache = childrenCreationCache[i];
@@ -376,7 +382,7 @@ namespace PxPre
                     {
                         ccache.plate.rectTransform.anchoredPosition = 
                             new Vector2(
-                                fX, 
+                                props.outerPadding.left, 
                                 -fY);
 
                         ccache.plate.rectTransform.sizeDelta = 
@@ -406,14 +412,15 @@ namespace PxPre
                     }
                     else if(n.type == Node.Type.Separator)
                     {
+                        float leftPad = props.outerPadding.left + props.splitterPadding.left;
+                        float rightPad = props.outerPadding.right + props.splitterPadding.right;
+
                         ccache.plate.rectTransform.anchoredPosition = 
-                            new Vector2(fX + this.props.splitterPadding.left, -fY - this.props.splitterPadding.top );
+                            new Vector2( leftPad, -fY - this.props.splitterPadding.top );
 
                         ccache.plate.rectTransform.sizeDelta = 
-                            new Vector2( 
-                                xWidth - 
-                                this.props.splitterPadding.left - 
-                                this.props.splitterPadding.right, 
+                            new Vector2(
+                                finalMenuWidth - leftPad - rightPad, 
                                 this.props.splitter.rect.height );
 
                         fY += ccache.height;
@@ -423,7 +430,7 @@ namespace PxPre
                 fY += this.props.outerPadding.bottom;
                 rtMenu.sizeDelta = 
                     new Vector2(
-                        xWidth + this.props.outerPadding.left + this.props.outerPadding.right, fY);
+                       finalMenuWidth, fY);
 
                 // Layout plate
 

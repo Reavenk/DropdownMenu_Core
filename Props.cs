@@ -45,6 +45,7 @@ namespace PxPre
             public Sprite shadow;
             public Sprite plate;
             public Vector2 shadowOffset;
+            public Color shadowColor = Color.black;
 
             public Sprite splitter;
             public Padding splitterPadding;
