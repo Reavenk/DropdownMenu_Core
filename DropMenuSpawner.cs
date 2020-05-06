@@ -144,8 +144,7 @@ namespace PxPre
                 rtMenu.pivot = new Vector2(0.0f, 1.0f);
                 rtMenu.anchorMin = new Vector2(0.0f, 1.0f);
                 rtMenu.anchorMax = new Vector2(0.0f, 1.0f);
-                rtMenu.position = loc;
-
+                
                 GameObject goShadow = new GameObject("Shadow");
                 goShadow.transform.SetParent(parent);
                 UnityEngine.UI.Image imgShadow = goShadow.AddComponent<UnityEngine.UI.Image>();
@@ -428,14 +427,19 @@ namespace PxPre
                 }
 
                 fY += this.props.outerPadding.bottom;
-                rtMenu.sizeDelta = 
+
+                rtMenu.sizeDelta =
                     new Vector2(
                        finalMenuWidth, fY);
+
+                rtMenu.anchoredPosition = Vector2.zero;
+                rtMenu.position = loc;
 
                 // Layout plate
 
                 rtShadow.sizeDelta = rtMenu.sizeDelta;
-                rtShadow.anchoredPosition = rtMenu.anchoredPosition + this.props.shadowOffset;
+                rtShadow.anchoredPosition = Vector2.zero;
+                rtShadow.position = rtMenu.position + (Vector3)this.props.shadowOffset;
                 //
                 rtShadow.SetAsLastSibling();
                 rtMenu.SetAsLastSibling();
