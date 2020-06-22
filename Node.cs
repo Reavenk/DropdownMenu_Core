@@ -12,7 +12,16 @@ namespace PxPre
             {
                 Menu,
                 Action,
-                Separator
+                Separator,
+                GoBack
+            }
+
+            [System.Flags]
+            public enum Flags
+            { 
+                Selected    = 1 << 1,
+                Disabled    = 1 << 2,
+                Colored     = 1 << 3,
             }
 
             public string label = "";
@@ -20,6 +29,9 @@ namespace PxPre
             public List<Node> children = null;
             public System.Action action = null;
             public Sprite sprite;
+            public Color color = Color.white;
+            public Props.TextAlignment alignment = Props.TextAlignment.Default;
+            public Flags flags = 0;
 
             public Node(string label, System.Action onSel)
             { 
@@ -50,8 +62,15 @@ namespace PxPre
 
             public Node AddAction(Sprite icon, string label, System.Action onSel)
             {
+                return this.AddAction(icon, Color.white, label, onSel);
+            }
+
+            public Node AddAction(Sprite icon, Color color, string label, System.Action onSel, Node.Flags flags = 0)
+            {
                 Node n = new Node(label, onSel);
                 n.sprite = icon;
+                n.color = color;
+                n.flags = flags;
                 this.AddChild(n);
                 return n;
             }

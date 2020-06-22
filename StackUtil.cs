@@ -25,13 +25,13 @@ namespace PxPre
 
             public void PushMenu(string title)
             { 
-                this.curr = this.curr.AddSubmenu(title);
                 this.stack.Push(this.curr);
+                this.curr = this.curr.AddSubmenu(title);
             }
 
             public void PopMenu()
             { 
-                if(this.stack.Count == 1)
+                if(this.stack.Count <= 1)
                     return;
 
                 this.curr = this.stack.Pop();
@@ -42,14 +42,39 @@ namespace PxPre
                 this.curr.AddSeparator();
             }
 
-            public void AddAction(string label, System.Action onSel)
+            public void AddAction(string label, System.Action onSel, bool sel = false)
             { 
                 this.curr.AddAction(label, onSel);
             }
 
+            public void AddAction(Color color, string label, System.Action onSel)
+            {
+                this.curr.AddAction(null, color, label, onSel);
+            }
+
+            public void AddAction(Sprite icon, Color color, string label, System.Action onSel, Node.Flags flags = 0)
+            { 
+                this.curr.AddAction(icon, color, label, onSel, flags|Node.Flags.Colored);
+            }
+
+            public void AddAction(Sprite icon, Color color, string label, System.Action onSel)
+            { 
+                this.curr.AddAction(icon, color, label, onSel, Node.Flags.Colored);
+            }
+
+            public void AddAction(bool sel, Sprite icon, Color color, string label, System.Action onSel)
+            { 
+                this.curr.AddAction(icon, color, label, onSel, sel ? Node.Flags.Selected : 0);
+            }
+
             public void AddAction(Sprite icon, string label, System.Action onSel)
             { 
-                this.curr.AddAction(icon, label, onSel);
+                this.curr.AddAction(icon, Color.white, label, onSel, 0);
+            }
+
+            public void AddAction(bool sel, Sprite icon, string label, System.Action onSel)
+            {
+                this.curr.AddAction(icon, Color.white, label, onSel, sel ? Node.Flags.Selected : 0);
             }
         }
     }

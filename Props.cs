@@ -18,6 +18,36 @@ namespace PxPre
                 public float bottom;
             }
 
+            [System.Serializable]
+            public class SelectableProperties
+            {
+                public Sprite spriteNormal;
+                public Color color;
+                public UnityEngine.UI.ColorBlock colorBlock;
+                public UnityEngine.UI.SpriteState spriteState;
+                public UnityEngine.UI.Selectable.Transition transition;
+
+                public void Apply(UnityEngine.UI.Selectable sel, UnityEngine.UI.Image img)
+                { 
+                    img.color = this.color;
+                    img.sprite = this.spriteNormal;
+                    img.type = UnityEngine.UI.Image.Type.Sliced;
+
+                    sel.colors = this.colorBlock;
+                    sel.spriteState = this.spriteState;
+                    sel.targetGraphic = img;
+                    sel.transition = this.transition;
+                }
+            }
+
+            public enum TextAlignment
+            { 
+                Left,
+                Middle,
+                Right,
+                Default
+            }
+
             /// <summary>
             /// The color and opacity of the modal plate hosting the dropdown menu.
             /// </summary>
@@ -29,6 +59,13 @@ namespace PxPre
             public bool showTitles;
 
             public Padding outerPadding;
+
+            // For now this is just a variable that is held and referenced,
+            // but not directly used.
+            public Color unselectedColor = Color.white;
+            // For now this is just a variable that is held and referenced,
+            // but not directly used.
+            public Color selectedColor = new Color(0.8f, 1.0f, 0.8f);
 
             public Font titleFont;
             public Font entryFont;
@@ -53,7 +90,38 @@ namespace PxPre
 
             public float childrenSpacing = 3.0f;
 
+            public Sprite scrollbarPlate;
+            public SelectableProperties overflowScrollbar;
+            public float scrollbarWidth = 50.0f;
+            public float scrollSensitivity = 50.0f;
 
+            public TextAlignment defaultTextAlignment;
+
+            public bool useGoBack = true;
+            public Sprite goBackIcon;
+            public int goBackFontSize;
+            public string goBackMessage = "Go Back";
+
+            public TextAnchor GetTextAnchorFromAlignment(TextAlignment alignment, bool canDefault)
+            { 
+                switch(alignment)
+                { 
+                    case TextAlignment.Left:
+                        return TextAnchor.MiddleLeft;
+
+                    case TextAlignment.Middle:
+                        return TextAnchor.MiddleCenter;
+
+                    case TextAlignment.Right:
+                        return TextAnchor.MiddleRight;
+
+                    default:
+                        if(canDefault == false)
+                            return TextAnchor.MiddleLeft;
+
+                        return GetTextAnchorFromAlignment(this.defaultTextAlignment, false);
+                }
+            }
         }
     }
 }
