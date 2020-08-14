@@ -12,7 +12,9 @@ namespace PxPre
 
             public System.Action<Node> onAction;
             //public System.Action<DropdownCreationReturn> onCreate;
+
             public System.Action<UnityEngine.UI.Image> onCreatedModalPlate;
+            public System.Action<SpawnContext, SpawnContext.NodeContext> onSubMenuOpened;
 
             public RectTransform CreateMenu(Canvas canvas, Vector2 pos)
             { 

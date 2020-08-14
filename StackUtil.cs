@@ -14,19 +14,19 @@ namespace PxPre
 
             public Node Root {get{return this.root; } }
 
-            public StackUtil(string title = "")
+            public StackUtil(string title = "", Flags flags = 0)
             { 
-                this.root = new Node(Node.Type.Menu);
+                this.root = new Node(Node.Type.Menu, flags);
                 this.root.label = title;
 
                 this.stack.Push(this.root);
                 this.curr = this.root;
             }
 
-            public void PushMenu(string title)
+            public void PushMenu(string title, Flags flags = 0)
             { 
                 this.stack.Push(this.curr);
-                this.curr = this.curr.AddSubmenu(title);
+                this.curr = this.curr.AddSubmenu(title, flags);
             }
 
             public void PopMenu()
@@ -52,19 +52,19 @@ namespace PxPre
                 this.curr.AddAction(null, color, label, onSel);
             }
 
-            public void AddAction(Sprite icon, Color color, string label, System.Action onSel, Node.Flags flags = 0)
+            public void AddAction(Sprite icon, Color color, string label, System.Action onSel, Flags flags = 0)
             { 
-                this.curr.AddAction(icon, color, label, onSel, flags|Node.Flags.Colored);
+                this.curr.AddAction(icon, color, label, onSel, flags|Flags.Colored);
             }
 
             public void AddAction(Sprite icon, Color color, string label, System.Action onSel)
             { 
-                this.curr.AddAction(icon, color, label, onSel, Node.Flags.Colored);
+                this.curr.AddAction(icon, color, label, onSel, Flags.Colored);
             }
 
             public void AddAction(bool sel, Sprite icon, Color color, string label, System.Action onSel)
             { 
-                this.curr.AddAction(icon, color, label, onSel, sel ? Node.Flags.Selected : 0);
+                this.curr.AddAction(icon, color, label, onSel, sel ? Flags.Selected : 0);
             }
 
             public void AddAction(Sprite icon, string label, System.Action onSel)
@@ -74,7 +74,7 @@ namespace PxPre
 
             public void AddAction(bool sel, Sprite icon, string label, System.Action onSel)
             {
-                this.curr.AddAction(icon, Color.white, label, onSel, sel ? Node.Flags.Selected : 0);
+                this.curr.AddAction(icon, Color.white, label, onSel, sel ? Flags.Selected : 0);
             }
         }
     }

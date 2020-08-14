@@ -64,6 +64,7 @@ namespace PxPre
                 public Node menu;                   // The menu representation
                 public UnityEngine.UI.Image plate;  // The UI container for the entire image
                 public UnityEngine.UI.Image shadow; // The shadow behind the plate
+                public bool hasScroll = false;
 
                 public NodeContext(Node menu, UnityEngine.UI.Image plate, UnityEngine.UI.Image shadow)
                 { 
@@ -282,10 +283,21 @@ namespace PxPre
                 return ret;
             }
 
-            public NodeContext CreateDropdownSubMenu(Node menu, RectTransform rtInvokingRect)
+            public NodeContext CreateDropdownSubMenu(Node menu, bool pushScroll, RectTransform rtInvokingRect)
             {
                 Vector3 [] corners = new Vector3[4];
                 rtInvokingRect.GetWorldCorners(corners);
+
+                if(pushScroll == true)
+                {
+                    float scrW = 
+                        this.spawner.props.scrollbarWidth + 
+                        this.spawner.props.outerPadding.right;
+
+                    float scrollbarOffset = scrW * rtInvokingRect.lossyScale.x;
+                    corners[2].x += scrollbarOffset;
+                    corners[3].x += scrollbarOffset;
+                }
 
                 ActionBuffer [] rabs = null;
                 if(this.spawnDirection == SpawnDirection.Left)
@@ -320,6 +332,8 @@ namespace PxPre
                         corners, 
                         this.spawner.props.useGoBack == true, 
                         rabs);
+
+                this.spawner?.onSubMenuOpened(this, ret);
 
                 return ret;
             }
@@ -430,7 +444,7 @@ namespace PxPre
                         case ActionBuffer.FlushRight:
                             nctx.plate.transform.position += 
                                 new Vector3(
-                                    menuCorners[2].x - menuCorners[0].x, 
+                                    canvasCorners[2].x - menuCorners[2].x, 
                                     0.0f, 
                                     0.0f);
                             break;
@@ -574,6 +588,8 @@ namespace PxPre
                         txtText.fontSize = props.entryFontSize;
                         txtText.font = props.entryFont;
                         txtText.text = n.label;
+                        txtText.horizontalOverflow = HorizontalWrapMode.Overflow;
+                        txtText.verticalOverflow = VerticalWrapMode.Overflow;
                         txtText.rectTransform.anchorMin = new Vector2(0.0f, 0.0f);
                         txtText.rectTransform.anchorMax = new Vector2(1.0f, 1.0f);
                         txtText.rectTransform.pivot = new Vector2(0.0f, 0.5f);
@@ -583,7 +599,7 @@ namespace PxPre
                         TextGenerator tg = txtText.cachedTextGenerator;
                         Vector2 textSz = 
                             new Vector2(
-                                tg.GetPreferredWidth(txtText.text, tgs), 
+                                Mathf.Ceil(tg.GetPreferredWidth(txtText.text, tgs) + 1.0f / goText.transform.lossyScale.x), 
                                 tg.GetPreferredHeight(txtText.text, tgs));
                         txtText.rectTransform.sizeDelta = textSz;
                         //
@@ -630,17 +646,22 @@ namespace PxPre
                             goEntry.ETQ().AddOnPointerEnter(
                                 (x)=>
                                 {
-                                    // If the menu is already , pop children menus all the way back to it
-                                    if(this.PopMenu(nCpy) == false)
-                                    {
-                                        // If not, another submenu might be up that we need to get rid of to make space
-                                        // for this new submenu - in which case we pop back to the menu that is about to
-                                        // spawn this submenu.
-                                        this.PopMenu(node);
-                                    }
+                                    //// If the menu is already , pop children menus all the way back to it
+                                    //if(this.PopMenu(nCpy) == false)
+                                    //{
+                                    //    // If not, another submenu might be up that we need to get rid of to make space
+                                    //    // for this new submenu - in which case we pop back to the menu that is about to
+                                    //    // spawn this submenu.
+                                    //    this.PopMenu(node);
+                                    //}
+
+                                    if(this.PopMenu(nCpy) == true)
+                                        return;
+
 
                                     this.CreateDropdownSubMenu(
                                         nCpy,
+                                        nctxRet.hasScroll,
                                         imgEntry.rectTransform);
                                 });
                         }
@@ -670,16 +691,16 @@ namespace PxPre
 
                         Color cUse = props.unselectedColor;
                         //
-                        if((n.flags & Node.Flags.Colored) != 0)
+                        if((n.flags & Flags.Colored) != 0)
                             cUse = n.color;
-                        else if((n.flags & Node.Flags.Selected) != 0)
+                        else if((n.flags & Flags.Selected) != 0)
                             cUse = props.selectedColor;
                         //
                         imgEntry.color = cUse;
 
                         if(itemBtn != null)
                         {
-                            if((n.flags & Node.Flags.Disabled) != 0)
+                            if((n.flags & Flags.Disabled) != 0)
                                 itemBtn.interactable = false;
 
                             UnityEngine.UI.ColorBlock cb = itemBtn.colors;
@@ -861,13 +882,23 @@ namespace PxPre
                 float canvasHeight = canvasCorners[1].y - canvasCorners[0].y;
                 if ( menuHeight > canvasHeight)
                 { 
-                    List<Transform> menuChildren = new List<Transform>();
-                    foreach(Transform t in rtMenu)
+                    List<RectTransform> menuChildren = new List<RectTransform>();
+                    foreach(RectTransform t in rtMenu)
                         menuChildren.Add(t);
 
+                    nctxRet.hasScroll = true;
+
                     float height = rtMenu.sizeDelta.y;
-                    rtMenu.position = new Vector2(menuCorners[0].x, canvasCorners[1].y);
-                    rtMenu.sizeDelta = new Vector2(rtMenu.sizeDelta.x + props.scrollbarWidth, this.modalPlate.rect.height);
+
+                    rtMenu.position = 
+                        new Vector2(
+                            menuCorners[0].x, 
+                            canvasCorners[1].y);
+
+                    rtMenu.sizeDelta = 
+                        new Vector2(
+                            rtMenu.sizeDelta.x + props.scrollbarWidth, 
+                            this.modalPlate.rect.height);
 
                     GameObject goVP = new GameObject("Viewport");
                     goVP.transform.SetParent(rtMenu.transform, false);
@@ -922,6 +953,44 @@ namespace PxPre
                     scrt.gameObject.SetActive(false);   // Touch to make dirty and refresh itself
                     scrt.gameObject.SetActive(true);
                     scrt.scrollSensitivity = props.scrollSensitivity;
+                    //
+                    scrt.onValueChanged.AddListener( 
+                        (x)=>
+                        { 
+                            this.PopMenu(node);
+                        });
+
+                    // Check if we should center it
+                    if((node.flags & Flags.CenterScrollSel) != 0)
+                    { 
+                        int scrollidx = -1;
+                        for(int i = 0; i < node.children.Count; ++i)
+                        { 
+                            if((node.children[i].flags & Flags.Selected) != 0)
+                            { 
+                                scrollidx = i;
+                                break;
+                            }
+                        }
+
+                        if(scrollidx != -1)
+                        { 
+                            // Assume 1-1 mapping
+                            RectTransform rt = menuChildren[scrollidx];
+                            float contH = rtCont.rect.height;
+                            float viewH = rtView.rect.height;
+
+                            // We'll base off if it's in bounds or not off the center.
+                            float fCM = rt.anchoredPosition.y - rt.sizeDelta.y * 0.5f;
+                            if(-fCM > viewH)
+                            { 
+                                float fC = fCM - viewH * 0.5f;
+
+                                scrt.verticalNormalizedPosition = 
+                                    1.0f - (-fC - viewH) / (contH - viewH);
+                            }
+                        }
+                    }
 
                 }
                 // Else if the menu falls off the bottom of the screen, bring it back up

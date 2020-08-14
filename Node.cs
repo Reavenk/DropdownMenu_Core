@@ -6,6 +6,18 @@ namespace PxPre
 {
     namespace DropMenu
     {
+        [System.Flags]
+        public enum Flags
+        { 
+            Selected    = 1 << 1,
+            Disabled    = 1 << 2,
+            Colored     = 1 << 3,
+
+            // For submenus, if scrollable with a single selection, 
+            // scroll to it.
+            CenterScrollSel   = 1 << 4,
+        }
+
         public class Node
         {
             public enum Type
@@ -16,13 +28,7 @@ namespace PxPre
                 GoBack
             }
 
-            [System.Flags]
-            public enum Flags
-            { 
-                Selected    = 1 << 1,
-                Disabled    = 1 << 2,
-                Colored     = 1 << 3,
-            }
+            
 
             public string label = "";
             public Type type;
@@ -33,16 +39,18 @@ namespace PxPre
             public Props.TextAlignment alignment = Props.TextAlignment.Default;
             public Flags flags = 0;
 
-            public Node(string label, System.Action onSel)
+            public Node(string label, System.Action onSel, Flags flags = 0)
             { 
                 this.type = Type.Action;
+                this.flags = flags;
                 this.label = label;
                 this.action = onSel;
             }
 
-            public Node(Type type)
+            public Node(Type type, Flags flags = 0)
             { 
                 this.type = type;
+                this.flags = flags;
 
                 if(type == Type.Menu)
                     this.children = new List<Node>();
@@ -65,7 +73,7 @@ namespace PxPre
                 return this.AddAction(icon, Color.white, label, onSel);
             }
 
-            public Node AddAction(Sprite icon, Color color, string label, System.Action onSel, Node.Flags flags = 0)
+            public Node AddAction(Sprite icon, Color color, string label, System.Action onSel, Flags flags = 0)
             {
                 Node n = new Node(label, onSel);
                 n.sprite = icon;
@@ -75,10 +83,11 @@ namespace PxPre
                 return n;
             }
 
-            public Node AddSubmenu(string label)
+            public Node AddSubmenu(string label, Flags flags = 0)
             { 
                 Node n = new Node( Type.Menu);
                 n.label = label;
+                n.flags = flags;
 
                 this.AddChild(n);
                 return n;
