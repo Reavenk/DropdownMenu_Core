@@ -1,4 +1,26 @@
-﻿using System.Collections;
+﻿// MIT License
+// 
+// Copyright (c) 2021 Pixel Precision, LLC
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,21 +28,87 @@ namespace PxPre
 {
     namespace DropMenu
     {
+        /// <summary>
+        /// A session of a dropdown menu. A context holds information and asset references
+        /// for all instanced submenus - as well as the ability to click outside of the
+        /// menus to close and destroy the dropdown session.
+        /// </summary>
         public class SpawnContext
         { 
+            /// <summary>
+            /// A list of different ways a menu can be created around a point or bounding box.
+            /// 
+            /// This is used to send a prioritiezed list of way to fit the menu on screen without
+            /// the menu content going offscreen or performing any other type of illegal placements.
+            /// 
+            /// For the descriptions, the term "hotspot" will be used to refer to the point or bounds
+            /// the menu is expected to be built around.
+            /// </summary>
             public enum ActionBuffer
             {
+                /// <summary>
+                /// An action to switch attempts to build the menu to the left of the hotspot.
+                /// See SpawnDirection for more information.
+                /// </summary>
                 SwitchToLeft,
+
+                /// <summary>
+                /// An action to switch attempts to build the menu to the right of the hotspot.
+                /// See SpawnDirection for more information.
+                /// </summary>
                 SwitchToRight,
+
+                /// <summary>
+                /// Toggle the direction. The same as SwitchToLeft or SwitchToRight, but automatically sets it
+                /// to the opposite of the current direction.
+                /// </summary>
                 SwitchDir,
+
+                /// <summary>
+                /// Build the menu with the top left of the menu placed at the bottom left of the hotspot.
+                /// </summary>
                 TopLeftMenuToBotLeftInvoker,
+
+                /// <summary>
+                /// Build the menu with the top right of the menu placed at the bottom right of the hotspot.
+                /// </summary>
                 TopRightMenuToBotRightInvoker,
+
+                /// <summary>
+                /// Build the menu with the top left of the menu placed at the top right of the hotspot.
+                /// </summary>
                 TopLeftMenuToTopRightInvoker,
+
+                /// <summary>
+                /// Build the menu with the top right of the menu placed at the top left of the hotspot.
+                /// </summary>
                 TopRightMenuToTopLeftInvoker,
+
+                /// <summary>
+                /// Build the menu with the right of the menu placed at the left of the hotspot. No preference
+                /// on vertical placement as long as it fits on screen.
+                /// </summary>
                 TryAlignRightMenuToLeftInvoker,
+
+                /// <summary>
+                /// Build the menu with the left of the menu place at the right of the hotspot. Not preference
+                /// on vertical placement as long as it fits on screen.
+                /// </summary>
                 TryAlignLeftMenuToRightInvoker,
+
+                /// <summary>
+                /// Try to build the menu with the left of the menu place on the left edge of the screen.
+                /// </summary>
                 FlushLeft,
+
+                /// <summary>
+                /// Try to build the menu with the right of the menu placed on the right edge of the screen.
+                /// </summary>
                 FlushRight,
+
+                /// <summary>
+                /// Last resort - just try to get the menu fiting in the screen.
+                /// </summary>
                 FitInBounds
             }
             /// <summary>
@@ -29,10 +117,17 @@ namespace PxPre
             /// one direction, we will switch the direction which things spawn.
             /// </summary>
             public enum SpawnDirection
-	        { 
-		        Left,   // Submenus spawn to the left of the parent menu.
-		        Right   // Submenus spawn to the right of the parent menu.
-	        }
+	        {
+                /// <summary>
+                /// Submenus spawn to the left of the parent menu.
+                /// </summary>
+                Left,
+
+                /// <summary>
+                /// Submenus spawn to the right of the parent menu.
+                /// </summary>
+                Right
+            }
 
             /// <summary>
             /// A structure to group menu nodes and asset data together while
@@ -40,13 +135,42 @@ namespace PxPre
             /// </summary>
             protected struct NodeCreationCache
             {
-                public Node node;
+                /// <summary>
+                /// The node the NodeCreationCache is for.
+                /// </summary>
+                public Node node; // TODO: Look into making this readonly
+
+                /// <summary>
+                /// The body plate of the menu item.
+                /// </summary>
                 public UnityEngine.UI.Image plate;
+
+                /// <summary>
+                /// The label of the menu item.
+                /// </summary>
                 public UnityEngine.UI.Text text;
-                public UnityEngine.UI.Image icon;   // Will be null if doesn't have an icon.
-                public UnityEngine.UI.Image arrow;  // Will be null if not a submenu
+
+                /// <summary>
+                /// The icon for actions and submenus.
+                /// Will be null if doesn't have an icon.
+                /// </summary>
+                public UnityEngine.UI.Image icon;
+
+                /// <summary>
+                /// The icon for submenus.
+                /// Will be null if not a submenu
+                /// </summary>
+                public UnityEngine.UI.Image arrow;  
+
+                /// <summary>
+                /// Cached precalculated height.
+                /// </summary>
                 public float height;
 
+                /// <summary>
+                /// Constructor
+                /// </summary>
+                /// <param name="node"></param>
                 public NodeCreationCache(Node node)
                 { 
                     this.node = node;
@@ -59,13 +183,37 @@ namespace PxPre
                 }
             }
 
+            /// <summary>
+            /// A collection of variabled related to the instanced UI objects for a menu.
+            /// </summary>
             public class NodeContext
-            { 
-                public Node menu;                   // The menu representation
-                public UnityEngine.UI.Image plate;  // The UI container for the entire image
-                public UnityEngine.UI.Image shadow; // The shadow behind the plate
+            {
+                /// <summary>
+                /// The menu representation
+                /// </summary>
+                public Node menu;
+
+                /// <summary>
+                /// The UI container for the entire image
+                /// </summary>
+                public UnityEngine.UI.Image plate;
+
+                /// <summary>
+                /// The shadow behind the plate
+                /// </summary>
+                public UnityEngine.UI.Image shadow;
+
+                /// <summary>
+                /// Cached state of if an overflow scrollbar was created for the menu.
+                /// </summary>
                 public bool hasScroll = false;
 
+                /// <summary>
+                /// Constructor.
+                /// </summary>
+                /// <param name="menu">The menu the context is for.</param>
+                /// <param name="plate">The imaged created to be the menu's plate.</param>
+                /// <param name="shadow">The image created to be the menu's shadow.</param>
                 public NodeContext(Node menu, UnityEngine.UI.Image plate, UnityEngine.UI.Image shadow)
                 { 
                     this.menu = menu;
@@ -73,6 +221,12 @@ namespace PxPre
                     this.shadow = shadow;
                 }
 
+                /// <summary>
+                /// Based on the position of the menu's plate, move the shadow's position and Z ordering
+                /// to be correctly offset.
+                /// </summary>
+                /// <param name="props">The menu's properties.</param>
+                /// <param name="tBotPlate">The Transform to place the shadow behind.</param>
                 public void LayoutShadow(Props props, Transform tBotPlate)
                 {
                     if(props == null || this.shadow == null)
@@ -93,14 +247,38 @@ namespace PxPre
                 }
             }
 
+            /// <summary>
+            /// The DropMenuSpawner that created the menu.
+            /// </summary>
             public DropMenuSpawner spawner;
+
+            /// <summary>
+            /// The RectTransform of the modal plate.
+            /// </summary>
+            /// <remarks>The modal plate is an interactable image that takes up the whole screen behind the
+            /// menu. It is the parent GameObject of the menu system, if it is destroyed, the entire menu session
+            /// is also destroyed. It is also in charge of detecting if the user clicks outside of any (sub)menus -
+            /// in which case the menu system will close.
+            /// </remarks>
             private RectTransform modalPlate;
 
+            /// <summary>
+            /// The current preffered horizontal spawn direction when creating new submenus.
+            /// </summary>
             public SpawnDirection spawnDirection = SpawnDirection.Right;
 
+            /// <summary>
+            /// The instanced submenu hierarchy.
+            /// </summary>
             public List<NodeContext> spawnedSubmenus = 
                 new List<NodeContext>();
 
+            /// <summary>
+            /// Constructor.
+            /// </summary>
+            /// <param name="canvas">The canvas the menu is going to be created on.</param>
+            /// <param name="spawner">The spawner that created the menu system.</param>
+            /// <param name="spawnDirection">The starting spawn direction.</param>
             public SpawnContext(
                 Canvas canvas,
                 DropMenuSpawner spawner,
@@ -145,23 +323,46 @@ namespace PxPre
                 this.modalPlate = rtBP;
             }
 
+            /// <summary>
+            /// Pop the top submenu until a certain hierarchy depth is reached.
+            /// </summary>
+            /// <param name="depth">The target depth to stop at.</param>
             public void BreakDown(int depth)
             {
                 while(this.spawnedSubmenus.Count >= depth + 1)
                     this.PopMenu();
             }
 
+            /// <summary>
+            /// Destroy the entire menu system, including the modal plate.
+            /// </summary>
             public void Destroy()
             { 
                 if(this.modalPlate.gameObject != null)
                     GameObject.Destroy(this.modalPlate.gameObject);
             }
 
+            /// <summary>
+            /// Destroy submenus until the stop menu is a menu tied to a specific NodeContext.
+            /// </summary>
+            /// <param name="context">The stopping condition.</param>
+            /// <param name="checkFirst">If true, checks if there is a successful stopping condition. 
+            /// If there isn't then the operation is cancelled. If false, keep poping, even if we pop
+            /// everything and never find what we were looking for.</param>
+            /// <returns>True if we reached the stopping parameter. Else, false.</returns>
             public bool PopMenu(NodeContext context, bool checkFirst = true)
             { 
                 return this.PopMenu(context.plate.rectTransform , checkFirst);
             }
 
+            /// <summary>
+            /// Pop submenus until a specified menu is the top.
+            /// </summary>
+            /// <param name="node">The stopping condition.</param>
+            /// <param name="checkFirst">If true, checks if there is a successful stopping condition. 
+            /// If there isn't then the operation is cancelled. If false, keep poping, even if we pop
+            /// everything and never find what we were looking for.</param>
+            /// <returns>True if we reached the stopping parameter. Else, false.</returns>
             public bool PopMenu(Node node, bool checkFirst = true)
             { 
                 if(checkFirst == true)
@@ -193,6 +394,14 @@ namespace PxPre
 		        return false;
             }
 
+            /// <summary>
+            /// Pop submenus until a menu that's instanced with a specified RectTransform for its plate is the top.
+            /// </summary>
+            /// <param name="toRoot">The stopping condition</param>
+            /// <param name="checkFirst">If true, checks if there is a successful stopping condition. 
+            /// If there isn't then the operation is cancelled. If false, keep poping, even if we pop
+            /// everything and never find what we were looking for.</param>
+            /// <returns>True if we reached the stopping parameter. Else, false.</returns>
             public bool PopMenu(RectTransform toRoot, bool checkFirst = true)
 	        { 
 		        if(checkFirst == true)
@@ -224,6 +433,11 @@ namespace PxPre
 		        return false;
 	        }
 
+            /// <summary>
+            /// Destroy the top (sub)menu in the hierarchy. If the menu that was destroyed
+            /// was the root, destroy the entire menu system.
+            /// </summary>
+            /// <returns>Always true.</returns>
 	        public bool PopMenu()
 	        { 
 		        if(this.spawnedSubmenus.Count != 0)
@@ -241,9 +455,19 @@ namespace PxPre
 		        if(this.spawnedSubmenus.Count == 0)
                     this.Destroy();
 
-		        return true;
+                // Consider removing the return value.
+                // During early coding, it was unknown if there would be a possible 
+                // failure mode.
+                return true; 
 	        }
 
+            /// <summary>
+            /// Create a dropdown menu around a RectTransform - mimicing if the RectTransform was a UI
+            /// element that invoked a pulldown menu.
+            /// </summary>
+            /// <param name="menu">The menu to create.</param>
+            /// <param name="rtInvokingRect">The RectTransform to build the menu around.</param>
+            /// <returns>The context for the created menu.</returns>
             public NodeContext CreateDropdownMenu(Node menu, RectTransform rtInvokingRect)
             {
                 Vector3 [] corners = new Vector3[4];
@@ -283,8 +507,19 @@ namespace PxPre
                 return ret;
             }
 
+            /// <summary>
+            /// Create a dropdown menu with optional space for an overflow scrollbar.
+            /// </summary>
+            /// <param name="menu">The menu to create.</param>
+            /// <param name="pushScroll">Set by the submenu creation system. If true, extra padding is added to
+            /// the menu body to make space for the overflow scrollbar.</param>
+            /// <param name="rtInvokingRect">The RectTransform to create the menu around.</param>
+            /// <returns>The RectTransform to spawn the dropmenu around.</returns>
             public NodeContext CreateDropdownSubMenu(Node menu, bool pushScroll, RectTransform rtInvokingRect)
             {
+                // Do not call from outside
+                // TODO: Investigate making this non-public
+
                 Vector3 [] corners = new Vector3[4];
                 rtInvokingRect.GetWorldCorners(corners);
 
@@ -338,6 +573,14 @@ namespace PxPre
                 return ret;
             }
 
+            /// <summary>
+            /// Create a dropdown menu around a bounding box.
+            /// </summary>
+            /// <param name="node">The menu to create.</param>
+            /// <param name="bounds">An array of 4 points defining a RectTransform's bounds.</param>
+            /// <param name="addGoBack">If true, a go-back menu is also injected into the created menu.</param>
+            /// <param name="buffers">The instructions of layout strategies to attempt.</param>
+            /// <returns></returns>
             private NodeContext CreateDropdownMenu(Node node, Vector3 [] bounds, bool addGoBack, params ActionBuffer [] buffers)
             { 
                 if(buffers == null || buffers.Length == 0)
@@ -489,15 +732,32 @@ namespace PxPre
                 return nctx;
             }
 
+            /// <summary>
+            /// Create a dropdown menu.
+            /// </summary>
+            /// <param name="node">The menu to create.</param>
+            /// <param name="addGoBack">If true, a go-back button is added at the start of the menu.</param>
+            /// <param name="topLeftSpawn">The top left point of the menu.</param>
+            /// <returns></returns>
             public NodeContext CreateDropdownMenu(Node node, bool addGoBack, Vector3 topLeftSpawn)
             { 
+                // Deffer to subfunction. It seems this _CreateDropdownMenu is only called here. This might
+                // be vestigial from a refactor.
                 NodeContext nctx = this._CreateDropdownMenu(node, addGoBack, topLeftSpawn);
                 
                 //this.onCreate?.Invoke(nctx);
                 return nctx;
             }
 
-            IEnumerable<Node> GetMenuNodes(Node menu, bool addGoBack, NodeContext nctxGoBackTo)
+            /// <summary>
+            /// Enumerate through all the options of a (sub)menu.
+            /// </summary>
+            /// <param name="menu">The menu to iterate through.</param>
+            /// <param name="addGoBack">If true, a go-back button is added at the start</param>
+            /// <param name="nctxGoBackTo"></param>
+            /// <returns>An iterator of all the nodes of a menu node.</returns>
+            /// <remarks>The only point of this function is to branch adding a go back node to the front.</remarks>
+            IEnumerable<Node> GetMenuNodes(Node menu, bool addGoBack, NodeContext nctxGoBackTo) // TODO: Check if nctxGoBackTo should be deleted
             { 
                 if(addGoBack == true)
                 { 
@@ -520,6 +780,13 @@ namespace PxPre
                     yield return n;
             }
 
+            /// <summary>
+            /// The menu to create.
+            /// </summary>
+            /// <param name="node">The menu to create.</param>
+            /// <param name="addGoBack">If true, a go-back button is inject at the start of the menu.</param>
+            /// <param name="topLeftSpawn">The UI position to create the menu.</param>
+            /// <returns>The record of the created menu instance.</returns>
             protected NodeContext _CreateDropdownMenu(Node node, bool addGoBack, Vector3 topLeftSpawn)
             {
                 Props props = this.spawner.props;
@@ -953,6 +1220,7 @@ namespace PxPre
                     scrt.gameObject.SetActive(false);   // Touch to make dirty and refresh itself
                     scrt.gameObject.SetActive(true);
                     scrt.scrollSensitivity = props.scrollSensitivity;
+                    
                     //
                     scrt.onValueChanged.AddListener( 
                         (x)=>
