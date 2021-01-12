@@ -175,7 +175,7 @@ namespace PxPre
             }
 
             /// <summary>
-            /// Adds an action taht's either selected or unselected, depending on a specified bool parameter.
+            /// Adds an action that's either selected or unselected, depending on a specified bool parameter.
             /// </summary>
             /// <param name="sel">The selection state of the action.</param>
             /// <param name="icon">The icon to draw with the menu item.</param>
