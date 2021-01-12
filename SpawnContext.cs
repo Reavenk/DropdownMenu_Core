@@ -568,7 +568,8 @@ namespace PxPre
                         this.spawner.props.useGoBack == true, 
                         rabs);
 
-                this.spawner?.onSubMenuOpened(this, ret);
+                if(this.spawner.onSubMenuOpened != null)
+                    this.spawner.onSubMenuOpened(this, ret);
 
                 return ret;
             }
