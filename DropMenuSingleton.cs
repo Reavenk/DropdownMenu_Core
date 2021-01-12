@@ -22,47 +22,44 @@
 
 using UnityEngine;
 
-namespace PxPre
+namespace PxPre.DropMenu
 {
-    namespace DropMenu
+    /// <summary>
+    /// Singleton to declare a single DropMenu used by the entire application.
+    /// </summary>
+    [RequireComponent(typeof(DropMenuSpawner))]
+    public class DropMenuSingleton : MonoBehaviour
     {
         /// <summary>
-        /// Singleton to declare a single DropMenu used by the entire application.
+        /// The singleton instance.
         /// </summary>
-        [RequireComponent(typeof(DropMenuSpawner))]
-        public class DropMenuSingleton : MonoBehaviour
+        static DropMenuSingleton instance;
+
+        /// <summary>
+        /// Public accessor to the singleton instance.
+        /// </summary>
+        public static DropMenuSingleton Instance {get{return instance; } }
+
+        /// <summary>
+        /// The singleton menu.
+        /// </summary>
+        public static DropMenuSpawner MenuInst
+        { get{return Instance.CachedMenu; } }
+
+        /// <summary>
+        /// Cached singleton menu.
+        /// </summary>
+        private DropMenuSpawner menu;
+
+        /// <summary>
+        /// Public accessor to the cached singleton menu.
+        /// </summary>
+        public DropMenuSpawner CachedMenu { get{return this.menu; } }
+
+        private void Awake()
         {
-            /// <summary>
-            /// The singleton instance.
-            /// </summary>
-            static DropMenuSingleton instance;
-
-            /// <summary>
-            /// Public accessor to the singleton instance.
-            /// </summary>
-            public static DropMenuSingleton Instance {get{return instance; } }
-
-            /// <summary>
-            /// The singleton menu.
-            /// </summary>
-            public static DropMenuSpawner MenuInst
-            { get{return Instance.CachedMenu; } }
-
-            /// <summary>
-            /// Cached singleton menu.
-            /// </summary>
-            private DropMenuSpawner menu;
-
-            /// <summary>
-            /// Public accessor to the cached singleton menu.
-            /// </summary>
-            public DropMenuSpawner CachedMenu { get{return this.menu; } }
-
-            private void Awake()
-            {
-                instance = this;
-                this.menu = this.GetComponent<DropMenuSpawner>();
-            }
+            instance = this;
+            this.menu = this.GetComponent<DropMenuSpawner>();
         }
     }
 }

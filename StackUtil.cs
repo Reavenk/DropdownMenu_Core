@@ -23,168 +23,165 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace PxPre
+namespace PxPre.DropMenu
 {
-    namespace DropMenu
+    /// <summary>
+    /// A utility class to create a heirarchy of Nodes for a dropdown menu, with a
+    /// stack backed API similar to immediate mode APIs. 
+    /// </summary>
+    public class StackUtil
     {
         /// <summary>
-        /// A utility class to create a heirarchy of Nodes for a dropdown menu, with a
-        /// stack backed API similar to immediate mode APIs. 
+        /// The current stack hierarchy of nodes.
         /// </summary>
-        public class StackUtil
+        Stack<Node> stack = new Stack<Node>();
+
+        /// <summary>
+        /// The root node.
+        /// </summary>
+        Node root = null;
+
+        /// <summary>
+        /// The cached top of the stack.
+        /// </summary>
+        Node curr = null;
+
+        /// <summary>
+        /// The root node.
+        /// </summary>
+        public Node Root {get{return this.root; } }
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="title">The title of the menu.</param>
+        /// <param name="flags">Property flags.</param>
+        /// <remarks>The titles parameter is a placholder. Menu titles are not currently supported.</remarks>
+        public StackUtil(string title = "", Flags flags = 0)
+        { 
+            this.root = new Node(Node.Type.Menu, flags);
+            this.root.label = title;
+
+            this.stack.Push(this.root);
+            this.curr = this.root;
+        }
+
+        /// <summary>
+        /// Push a menu to the node on the top of the stack. All Push* and Add* calls will add content
+        /// to this new submenu node until the next PopMenu() call.
+        /// </summary>
+        /// <param name="title">The submenu label.</param>
+        /// <param name="flags">Submenu properties.</param>
+        public void PushMenu(string title, Flags flags = 0)
+        { 
+            this.stack.Push(this.curr);
+            this.curr = this.curr.AddSubmenu(title, flags);
+        }
+
+        /// <summary>
+        /// Pop a menu off a stack. Poping a menu off the stack redirects all Add* and Push* 
+        /// functions to the submenu before the last Push.
+        /// </summary>
+        public void PopMenu()
+        { 
+            if(this.stack.Count <= 1)
+                return;
+
+            this.curr = this.stack.Pop();
+        }
+
+        /// <summary>
+        /// Adds a separator to the node on the top of the stack.
+        /// </summary>
+        public void AddSeparator()
+        { 
+            this.curr.AddSeparator();
+        }
+
+        /// <summary>
+        /// Add an action to the top node of the stack, uses property colors.
+        /// </summary>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="onSel">The action's callback.</param>
+        /// <param name="sel">If true, the menu item is given the selection color.</param>
+        public void AddAction(string label, System.Action onSel, bool sel = false)
+        { 
+            this.curr.AddAction(label, onSel);
+        }
+
+        /// <summary>
+        /// Add an action to the top node of the stack, uses a color override.
+        /// </summary>
+        /// <param name="color">The color to override the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(Color color, string label, System.Action onSel)
         {
-            /// <summary>
-            /// The current stack hierarchy of nodes.
-            /// </summary>
-            Stack<Node> stack = new Stack<Node>();
+            this.curr.AddAction(null, color, label, onSel);
+        }
 
-            /// <summary>
-            /// The root node.
-            /// </summary>
-            Node root = null;
+        /// <summary>
+        /// Add an action to the top node of the stack. The method provides all
+        /// options for defining an action node.
+        /// </summary>
+        /// <param name="icon">The icon to draw with the menu item.</param>
+        /// <param name="color">The color to override the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="onSel">The action's callback.</param>
+        /// <param name="flags">Node properties of the action's menu item.</param>
+        public void AddAction(Sprite icon, Color color, string label, System.Action onSel, Flags flags = 0)
+        { 
+            this.curr.AddAction(icon, color, label, onSel, flags|Flags.Colored);
+        }
 
-            /// <summary>
-            /// The cached top of the stack.
-            /// </summary>
-            Node curr = null;
+        /// <summary>
+        /// Add an action to the top node of the stack. Includes parameters for
+        /// an icon and color override.
+        /// </summary>
+        /// <param name="icon">The icon to draw with the menu item.</param>
+        /// <param name="color">The color to override the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(Sprite icon, Color color, string label, System.Action onSel)
+        { 
+            this.curr.AddAction(icon, color, label, onSel, Flags.Colored);
+        }
 
-            /// <summary>
-            /// The root node.
-            /// </summary>
-            public Node Root {get{return this.root; } }
+        /// <summary>
+        /// Adds an action that's either selected or unselected, depending on a specified bool parameter.
+        /// This version also has a color override.
+        /// </summary>
+        /// <param name="sel">The selection state of the action.</param>
+        /// <param name="icon">The icon to draw with the menu item.</param>
+        /// <param name="color">The color to override the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(bool sel, Sprite icon, Color color, string label, System.Action onSel)
+        { 
+            this.curr.AddAction(icon, color, label, onSel, sel ? Flags.Selected : 0);
+        }
 
-            /// <summary>
-            /// Constructor.
-            /// </summary>
-            /// <param name="title">The title of the menu.</param>
-            /// <param name="flags">Property flags.</param>
-            /// <remarks>The titles parameter is a placholder. Menu titles are not currently supported.</remarks>
-            public StackUtil(string title = "", Flags flags = 0)
-            { 
-                this.root = new Node(Node.Type.Menu, flags);
-                this.root.label = title;
+        /// <summary>
+        /// Adds an action with a sprite and icon.
+        /// </summary>
+        /// <param name="icon">The icon to draw with the menu.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(Sprite icon, string label, System.Action onSel)
+        { 
+            this.curr.AddAction(icon, Color.white, label, onSel, 0);
+        }
 
-                this.stack.Push(this.root);
-                this.curr = this.root;
-            }
-
-            /// <summary>
-            /// Push a menu to the node on the top of the stack. All Push* and Add* calls will add content
-            /// to this new submenu node until the next PopMenu() call.
-            /// </summary>
-            /// <param name="title">The submenu label.</param>
-            /// <param name="flags">Submenu properties.</param>
-            public void PushMenu(string title, Flags flags = 0)
-            { 
-                this.stack.Push(this.curr);
-                this.curr = this.curr.AddSubmenu(title, flags);
-            }
-
-            /// <summary>
-            /// Pop a menu off a stack. Poping a menu off the stack redirects all Add* and Push* 
-            /// functions to the submenu before the last Push.
-            /// </summary>
-            public void PopMenu()
-            { 
-                if(this.stack.Count <= 1)
-                    return;
-
-                this.curr = this.stack.Pop();
-            }
-
-            /// <summary>
-            /// Adds a separator to the node on the top of the stack.
-            /// </summary>
-            public void AddSeparator()
-            { 
-                this.curr.AddSeparator();
-            }
-
-            /// <summary>
-            /// Add an action to the top node of the stack, uses property colors.
-            /// </summary>
-            /// <param name="label">The label of the menu item.</param>
-            /// <param name="onSel">The action's callback.</param>
-            /// <param name="sel">If true, the menu item is given the selection color.</param>
-            public void AddAction(string label, System.Action onSel, bool sel = false)
-            { 
-                this.curr.AddAction(label, onSel);
-            }
-
-            /// <summary>
-            /// Add an action to the top node of the stack, uses a color override.
-            /// </summary>
-            /// <param name="color">The color to override the menu item.</param>
-            /// <param name="label">The label of the menu item.</param>
-            /// <param name="onSel">The action's callback.</param>
-            public void AddAction(Color color, string label, System.Action onSel)
-            {
-                this.curr.AddAction(null, color, label, onSel);
-            }
-
-            /// <summary>
-            /// Add an action to the top node of the stack. The method provides all
-            /// options for defining an action node.
-            /// </summary>
-            /// <param name="icon">The icon to draw with the menu item.</param>
-            /// <param name="color">The color to override the menu item.</param>
-            /// <param name="label">The label of the menu item.</param>
-            /// <param name="onSel">The action's callback.</param>
-            /// <param name="flags">Node properties of the action's menu item.</param>
-            public void AddAction(Sprite icon, Color color, string label, System.Action onSel, Flags flags = 0)
-            { 
-                this.curr.AddAction(icon, color, label, onSel, flags|Flags.Colored);
-            }
-
-            /// <summary>
-            /// Add an action to the top node of the stack. Includes parameters for
-            /// an icon and color override.
-            /// </summary>
-            /// <param name="icon">The icon to draw with the menu item.</param>
-            /// <param name="color">The color to override the menu item.</param>
-            /// <param name="label">The label of the menu item.</param>
-            /// <param name="onSel">The action's callback.</param>
-            public void AddAction(Sprite icon, Color color, string label, System.Action onSel)
-            { 
-                this.curr.AddAction(icon, color, label, onSel, Flags.Colored);
-            }
-
-            /// <summary>
-            /// Adds an action that's either selected or unselected, depending on a specified bool parameter.
-            /// This version also has a color override.
-            /// </summary>
-            /// <param name="sel">The selection state of the action.</param>
-            /// <param name="icon">The icon to draw with the menu item.</param>
-            /// <param name="color">The color to override the menu item.</param>
-            /// <param name="label">The label of the menu item.</param>
-            /// <param name="onSel">The action's callback.</param>
-            public void AddAction(bool sel, Sprite icon, Color color, string label, System.Action onSel)
-            { 
-                this.curr.AddAction(icon, color, label, onSel, sel ? Flags.Selected : 0);
-            }
-
-            /// <summary>
-            /// Adds an action with a sprite and icon.
-            /// </summary>
-            /// <param name="icon">The icon to draw with the menu.</param>
-            /// <param name="label">The label of the menu item.</param>
-            /// <param name="onSel">The action's callback.</param>
-            public void AddAction(Sprite icon, string label, System.Action onSel)
-            { 
-                this.curr.AddAction(icon, Color.white, label, onSel, 0);
-            }
-
-            /// <summary>
-            /// Adds an action that's either selected or unselected, depending on a specified bool parameter.
-            /// </summary>
-            /// <param name="sel">The selection state of the action.</param>
-            /// <param name="icon">The icon to draw with the menu item.</param>
-            /// <param name="label">The label of the menu item.</param>
-            /// <param name="onSel">The action's callback.</param>
-            public void AddAction(bool sel, Sprite icon, string label, System.Action onSel)
-            {
-                this.curr.AddAction(icon, Color.white, label, onSel, sel ? Flags.Selected : 0);
-            }
+        /// <summary>
+        /// Adds an action that's either selected or unselected, depending on a specified bool parameter.
+        /// </summary>
+        /// <param name="sel">The selection state of the action.</param>
+        /// <param name="icon">The icon to draw with the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(bool sel, Sprite icon, string label, System.Action onSel)
+        {
+            this.curr.AddAction(icon, Color.white, label, onSel, sel ? Flags.Selected : 0);
         }
     }
 }
