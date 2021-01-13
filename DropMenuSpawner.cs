@@ -78,10 +78,10 @@ namespace PxPre.DropMenu
         /// <param name="rootNode">The root node of the menu to spawn.</param>
         /// <param name="loc">The UI location to spawn the menu.</param>
         /// <returns>The context information of the created menu.</returns>
-        private SpawnContext CreateDropdownMenu(Canvas canvas, Node rootNode, Vector3 loc)
-        { 
+        public SpawnContext CreateDropdownMenu(Canvas canvas, Node rootNode, Vector3 loc)
+        {
             SpawnContext sc = new SpawnContext(canvas, this);
-            sc.CreateDropdownMenu(rootNode, false, loc);
+            sc.CreateDropdownMenu(rootNode, loc);
             return sc;
         }
     }

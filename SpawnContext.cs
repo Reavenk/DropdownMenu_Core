@@ -471,12 +471,23 @@ namespace PxPre.DropMenu
             Vector3 [] corners = new Vector3[4];
             rtInvokingRect.GetWorldCorners(corners);
 
-            ActionBuffer [] rabs = null;
-            if(this.spawnDirection == SpawnDirection.Left)
-            { 
-                rabs = 
+           return CreateDropdownMenu(menu, corners);
+        }
+
+        public NodeContext CreateDropdownMenu(Node menu, Vector3 pt)
+        {
+            Vector3[] corners = new Vector3[4]{pt, pt, pt, pt };
+            return CreateDropdownMenu(menu, corners);
+        }
+
+        private NodeContext CreateDropdownMenu(Node menu, Vector3 [] corners)
+        {
+            ActionBuffer[] rabs = null;
+            if (this.spawnDirection == SpawnDirection.Left)
+            {
+                rabs =
                         new ActionBuffer[]
-                        { 
+                        {
                             ActionBuffer.TopRightMenuToBotRightInvoker,
                             ActionBuffer.SwitchToRight,
                             ActionBuffer.TopLeftMenuToBotLeftInvoker,
@@ -485,10 +496,10 @@ namespace PxPre.DropMenu
                         };
             }
             else
-            { 
-                rabs = 
+            {
+                rabs =
                     new ActionBuffer[]
-                    { 
+                    {
                         ActionBuffer.TopLeftMenuToBotLeftInvoker,
                         ActionBuffer.SwitchToLeft,
                         ActionBuffer.TopRightMenuToBotRightInvoker,
@@ -499,7 +510,7 @@ namespace PxPre.DropMenu
                     };
             }
 
-            NodeContext ret = 
+            NodeContext ret =
                 this.CreateDropdownMenu(menu, corners, false, rabs);
 
             return ret;
