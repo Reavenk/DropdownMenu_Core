@@ -932,7 +932,7 @@ namespace PxPre.DropMenu
                                 //    this.PopMenu(node);
                                 //}
 
-                                if(this.PopMenu(nCpy) == true)
+                                if(this.PopMenu(node) == false)
                                     return;
 
 
