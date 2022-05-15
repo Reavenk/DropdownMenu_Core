@@ -288,18 +288,21 @@ namespace PxPre.DropMenu
         public bool useGoBack = true;
 
         /// <summary>
-        /// The icon for the go-back button.
+        /// The icon for the go-back button. Only shown for submenus, and only if useGoBack
+        /// is set to true.
         /// </summary>
         public Sprite goBackIcon;
 
         /// <summary>
         /// The text size for the go-back button.
         /// </summary>
+        // TODO: Currently unused
         public int goBackFontSize;
 
         /// <summary>
         /// The label for the go-back buttons.
         /// </summary>
+        // TODO: Currently unused
         public string goBackMessage = "Go Back";
 
         /// <summary>
