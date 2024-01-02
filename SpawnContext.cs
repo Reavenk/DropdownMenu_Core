@@ -20,9 +20,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 namespace PxPre.DropMenu
 {
@@ -61,6 +62,10 @@ namespace PxPre.DropMenu
             /// to the opposite of the current direction.
             /// </summary>
             SwitchDir,
+
+            BotLeftMenuToBotRightInvoker,
+
+            BotRightMenuToBotLeftInvoker,
 
             /// <summary>
             /// Build the menu with the top left of the menu placed at the bottom left of the hotspot.
@@ -146,7 +151,12 @@ namespace PxPre.DropMenu
             /// <summary>
             /// The label of the menu item.
             /// </summary>
-            public UnityEngine.UI.Text text;
+            public TextMeshProUGUI text;
+
+            /// <summary>
+            /// Shortcut text
+            /// </summary>
+            public TextMeshProUGUI shortcut;
 
             /// <summary>
             /// The icon for actions and submenus.
@@ -175,6 +185,7 @@ namespace PxPre.DropMenu
 
                 this.plate = null;
                 this.text = null;
+                this.shortcut = null;
                 this.icon = null;
                 this.arrow = null;
                 this.height = 0.0f;
@@ -186,6 +197,11 @@ namespace PxPre.DropMenu
         /// </summary>
         public class NodeContext
         {
+            /// <summary>
+            /// Cached access to the parent of the submenu. Or null if the root menu.
+            /// </summary>
+            public NodeContext parent;
+
             /// <summary>
             /// The menu representation
             /// </summary>
@@ -206,14 +222,17 @@ namespace PxPre.DropMenu
             /// </summary>
             public bool hasScroll = false;
 
+            internal Dictionary<Node, CtxButton> buttonLookup = new Dictionary<Node, CtxButton>();
+
             /// <summary>
             /// Constructor.
             /// </summary>
             /// <param name="menu">The menu the context is for.</param>
             /// <param name="plate">The imaged created to be the menu's plate.</param>
             /// <param name="shadow">The image created to be the menu's shadow.</param>
-            public NodeContext(Node menu, UnityEngine.UI.Image plate, UnityEngine.UI.Image shadow)
+            public NodeContext(NodeContext parent, Node menu, UnityEngine.UI.Image plate, UnityEngine.UI.Image shadow)
             { 
+                this.parent = parent;
                 this.menu = menu;
                 this.plate = plate;
                 this.shadow = shadow;
@@ -243,6 +262,41 @@ namespace PxPre.DropMenu
                 else
                     rtShadow.SetSiblingIndex( rtMain.GetSiblingIndex() - 1);
             }
+
+            public void ResetAll(Node exceptHighlightThis = null)
+            { 
+                foreach(var kvp in buttonLookup)
+                { 
+                    // Disabled stuff is off limits
+                    if(!kvp.Value.interactable)
+                        continue;
+
+                    if(kvp.Key == exceptHighlightThis)
+                        kvp.Value.ForceSelectionState(CtxButton.SelectionState.Highlighted, false);
+                    else
+                        kvp.Value.ForceSelectionState(CtxButton.SelectionState.Normal, false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Class that double checks to make sure the context properly closes, even if Destroy()
+        /// wasn't manually called (which it should!). The SpawnContext.Destroy() will make sure
+        /// destruction is not actually being double-called.
+        /// </summary>
+        public class ModalAutoCloser : MonoBehaviour
+        {
+            public SpawnContext ownerCtx;
+            private void OnDestroy()
+            {
+                this.ownerCtx.Destroy();
+            }
+
+            private void OnDisable()
+            {
+                // If you're hiding it, you're done with it. There's no holding it around in limbo.
+                this.ownerCtx.Destroy();
+            }
         }
 
         /// <summary>
@@ -259,6 +313,7 @@ namespace PxPre.DropMenu
         /// in which case the menu system will close.
         /// </remarks>
         private RectTransform modalPlate;
+        public RectTransform ModalPlate => modalPlate;
 
         /// <summary>
         /// The current preffered horizontal spawn direction when creating new submenus.
@@ -270,6 +325,16 @@ namespace PxPre.DropMenu
         /// </summary>
         public List<NodeContext> spawnedSubmenus = 
             new List<NodeContext>();
+
+        /// <summary>
+        /// Called when a menu hierarchy has been closed.
+        /// 
+        /// This should not be confused with DropMenuSpawner.onMenuSessionStarted. This
+        /// action only applies to this single spawned menu hierarchy instance.
+        /// </summary>
+        public System.Action onMenuSessionEnded;
+
+        public bool destroyed = false;
 
         /// <summary>
         /// Constructor.
@@ -292,33 +357,67 @@ namespace PxPre.DropMenu
             goMP.transform.SetParent(canvas.transform);
             goMP.transform.localScale = Vector3.one;
             goMP.transform.localRotation = Quaternion.identity;
-            UnityEngine.UI.Image imgBP = goMP.AddComponent<UnityEngine.UI.Image>();
-            imgBP.color = spawner.props.modalPlateColor;
-            RectTransform rtBP = imgBP.rectTransform;
+
+            UnityEngine.UI.Image imgBP = null;
+            RectTransform rtBP = null;
+            if(spawner.props.useImageForModalPlate)
+            { 
+                imgBP = goMP.AddComponent<UnityEngine.UI.Image>();
+                imgBP.color = spawner.props.modalPlateColor;
+                rtBP = imgBP.rectTransform;
+            }
+            else
+            { 
+                // For now, in order to get input from the EventTrigger working, we create
+                // an invisible image - (which is the thing we were trying to avoid with
+                // useImageForModalPlate). Later on, we may convert this to the cheapest
+                // thing possible for an invisible interactable area.
+                imgBP = goMP.AddComponent<UnityEngine.UI.Image>();
+                imgBP.color = new Color(0.0f, 0.0f, 0.0f, 0.0f);
+                rtBP = imgBP.rectTransform;
+            }
             rtBP.anchorMin = Vector2.zero;
             rtBP.anchorMax = Vector2.one;
             rtBP.offsetMin = Vector2.zero;
             rtBP.offsetMax = Vector2.zero;
             rtBP.pivot = new Vector2(0.0f, 1.0f);
-            UnityEngine.EventSystems.EventTrigger tMP = goMP.AddComponent<UnityEngine.EventSystems.EventTrigger>();
-            tMP.triggers = new List<UnityEngine.EventSystems.EventTrigger.Entry>();
-            UnityEngine.EventSystems.EventTrigger.Entry mpClickExit = new UnityEngine.EventSystems.EventTrigger.Entry();
-            mpClickExit.eventID = UnityEngine.EventSystems.EventTriggerType.PointerDown;
-            mpClickExit.callback = new UnityEngine.EventSystems.EventTrigger.TriggerEvent();
-            mpClickExit.callback.AddListener(
-                (x) => 
-                { 
-                    this.spawner.onAction?.Invoke(null);
-                    this.Destroy();
-                });
-            tMP.triggers.Add(mpClickExit);
 
-            this.spawner.onCreatedModalPlate?.Invoke(imgBP);
+            var etq = EventTriggerQuickUtil.ETQ(goMP);
+            if(spawner.props.fallthroughCloseMethod == Props.ModalCloseMethod.PressDown)
+            {
+                etq.AddOnPointerDown(
+                    (x) => 
+                    { 
+                        this.spawner.onAction?.Invoke(null);
+                        this.Destroy();
+                    });
+            }
+            else if(spawner.props.fallthroughCloseMethod == Props.ModalCloseMethod.FullClick)
+            { 
+                etq.AddOnPointerClick(
+                    (x) =>
+                    { 
+                        this.spawner.onAction?.Invoke(null);
+                        this.Destroy();
+                    });
+            }
+            else
+                throw new NotImplementedException();
+
+            this.spawner.onCreatedModalPlate?.Invoke(rtBP, imgBP);
                     
             //      SET ROOT PLATE
             //////////////////////////////////////////////////
 
             this.modalPlate = rtBP;
+
+            ModalAutoCloser mac = this.modalPlate.gameObject.AddComponent<ModalAutoCloser>();
+            mac.ownerCtx = this;
+
+            //      FINISH
+            //////////////////////////////////////////////////
+            
+            this.spawner?.onMenuSessionStarted?.Invoke(this);
         }
 
         /// <summary>
@@ -336,8 +435,17 @@ namespace PxPre.DropMenu
         /// </summary>
         public void Destroy()
         { 
+            if(this.destroyed)
+                return;
+
+            this.spawner?.onMenuSessionEnded?.Invoke(this);
+            this.onMenuSessionEnded?.Invoke();
             if(this.modalPlate.gameObject != null)
+            { 
                 GameObject.Destroy(this.modalPlate.gameObject);
+                this.modalPlate = null;
+            }
+            this.destroyed = true;
         }
 
         /// <summary>
@@ -466,34 +574,34 @@ namespace PxPre.DropMenu
         /// <param name="menu">The menu to create.</param>
         /// <param name="rtInvokingRect">The RectTransform to build the menu around.</param>
         /// <returns>The context for the created menu.</returns>
-        public NodeContext CreateDropdownMenu(Node menu, RectTransform rtInvokingRect)
+        public NodeContext CreateDropdownMenu(Node menu, StyleOverride overrideFlags, RectTransform rtInvokingRect)
         {
             Vector3 [] corners = new Vector3[4];
             rtInvokingRect.GetWorldCorners(corners);
 
-           return CreateDropdownMenu(menu, corners);
+           return CreateDropdownMenu(menu, overrideFlags, corners);
         }
 
-        public NodeContext CreateDropdownMenu(Node menu, Vector3 pt)
+        public NodeContext CreateDropdownMenu(Node menu, StyleOverride overrideFlags, Vector3 pt)
         {
             Vector3[] corners = new Vector3[4]{pt, pt, pt, pt };
-            return CreateDropdownMenu(menu, corners);
+            return CreateDropdownMenu(menu, overrideFlags, corners);
         }
 
-        private NodeContext CreateDropdownMenu(Node menu, Vector3 [] corners)
+        private NodeContext CreateDropdownMenu(Node menu, StyleOverride overrideFlags, Vector3 [] corners)
         {
             ActionBuffer[] rabs = null;
             if (this.spawnDirection == SpawnDirection.Left)
             {
                 rabs =
-                        new ActionBuffer[]
-                        {
-                            ActionBuffer.TopRightMenuToBotRightInvoker,
-                            ActionBuffer.SwitchToRight,
-                            ActionBuffer.TopLeftMenuToBotLeftInvoker,
-                            ActionBuffer.FlushLeft,
-                            ActionBuffer.FitInBounds
-                        };
+                    new ActionBuffer[]
+                    {
+                        ActionBuffer.TopRightMenuToBotRightInvoker,
+                        ActionBuffer.SwitchToRight,
+                        ActionBuffer.TopLeftMenuToBotLeftInvoker,
+                        ActionBuffer.FlushLeft,
+                        ActionBuffer.FitInBounds
+                    };
             }
             else
             {
@@ -511,7 +619,7 @@ namespace PxPre.DropMenu
             }
 
             NodeContext ret =
-                this.CreateDropdownMenu(menu, corners, false, rabs);
+                this.CreateDropdownMenu(menu, corners, overrideFlags, false, rabs);
 
             return ret;
         }
@@ -524,10 +632,15 @@ namespace PxPre.DropMenu
         /// the menu body to make space for the overflow scrollbar.</param>
         /// <param name="rtInvokingRect">The RectTransform to create the menu around.</param>
         /// <returns>The RectTransform to spawn the dropmenu around.</returns>
-        public NodeContext CreateDropdownSubMenu(Node menu, bool pushScroll, RectTransform rtInvokingRect)
+        public NodeContext CreateDropdownSubMenu(Node menu, bool pushScroll, StyleOverride overrideFlags, RectTransform rtInvokingRect)
         {
             // Do not call from outside
             // TODO: Investigate making this non-public
+
+            if((overrideFlags & StyleOverride.TitleRootOnly) != 0)
+            { 
+                overrideFlags |= StyleOverride.ForceNoTitle;
+            }
 
             Vector3 [] corners = new Vector3[4];
             rtInvokingRect.GetWorldCorners(corners);
@@ -547,14 +660,14 @@ namespace PxPre.DropMenu
             if(this.spawnDirection == SpawnDirection.Left)
             { 
                 rabs = 
-                        new ActionBuffer[]
-                        { 
-                            ActionBuffer.TopRightMenuToTopLeftInvoker,
-                            ActionBuffer.TopRightMenuToTopLeftInvoker,
-                            ActionBuffer.SwitchToRight,
-                            ActionBuffer.FlushLeft,
-                            ActionBuffer.FitInBounds
-                        };
+                    new ActionBuffer[]
+                    { 
+                        ActionBuffer.TopRightMenuToTopLeftInvoker,
+                        ActionBuffer.TopRightMenuToTopLeftInvoker,
+                        ActionBuffer.SwitchToRight,
+                        ActionBuffer.FlushLeft,
+                        ActionBuffer.FitInBounds
+                    };
             }
             else
             { 
@@ -574,6 +687,7 @@ namespace PxPre.DropMenu
                 this.CreateDropdownMenu(
                     menu, 
                     corners, 
+                    overrideFlags,
                     this.spawner.props.useGoBack == true, 
                     rabs);
 
@@ -589,9 +703,10 @@ namespace PxPre.DropMenu
         /// <param name="node">The menu to create.</param>
         /// <param name="bounds">An array of 4 points defining a RectTransform's bounds.</param>
         /// <param name="addGoBack">If true, a go-back menu is also injected into the created menu.</param>
+        /// <param name="overrideFlags">Style override flags.</param>
         /// <param name="buffers">The instructions of layout strategies to attempt.</param>
         /// <returns></returns>
-        private NodeContext CreateDropdownMenu(Node node, Vector3 [] bounds, bool addGoBack, params ActionBuffer [] buffers)
+        private NodeContext CreateDropdownMenu(Node node, Vector3 [] bounds, StyleOverride overrideFlags, bool addGoBack, params ActionBuffer [] buffers)
         { 
             if(buffers == null || buffers.Length == 0)
                 buffers = new ActionBuffer[]{ ActionBuffer.TopLeftMenuToBotLeftInvoker };
@@ -606,7 +721,7 @@ namespace PxPre.DropMenu
             this.modalPlate.GetWorldCorners(canvasCorners);
             Vector2 canvasDim = canvasCorners[2] - canvasCorners[0];
 
-            // What we're mainly conerned about right now is that the Y value is in the correct
+            // What we're mainly concerned about right now is that the Y value is in the correct
             // location if it doesn't end up needing to adjust.
             Vector3 initialTry = bounds[0];
             switch(buffers[0])
@@ -615,15 +730,26 @@ namespace PxPre.DropMenu
                 case ActionBuffer.TopRightMenuToTopLeftInvoker:
                     initialTry = bounds[1];
                     break;
+                case ActionBuffer.BotLeftMenuToBotRightInvoker:
+                case ActionBuffer.BotRightMenuToBotLeftInvoker:
+                    initialTry = bounds[0];
+                    break;
             }
 
-            NodeContext nctx = CreateDropdownMenu(node, addGoBack, initialTry);
+            NodeContext nctx = CreateDropdownMenu(node, overrideFlags, addGoBack, initialTry);
 
             Vector3[] menuCorners = new Vector3[4];
             nctx.plate.rectTransform.GetWorldCorners(menuCorners);
             Vector3 menuDim = menuCorners[2] - menuCorners[0];
             Vector3 menuTL = menuCorners[1];
             
+            // There are two types of things being handled here, actions, and layout
+            // attempts. We'll go through all layout attempt until we find one that works -
+            // or until we run out of instructions in the buffer.
+            // 
+            // Any actions that run during this process are persistent, and currently
+            // the only types of actions that exist change the direction that submenus
+            // will spawn.
             foreach(ActionBuffer abCmd in buffers)
             { 
                     
@@ -643,6 +769,20 @@ namespace PxPre.DropMenu
                                 SpawnDirection.Right : 
                                 SpawnDirection.Left;
                         continue;
+
+                    case ActionBuffer.BotLeftMenuToBotRightInvoker:
+                        { 
+                            float tm = bounds[3].x - menuCorners[0].x;
+                            nctx.plate.transform.position += new Vector3(tm, 0.0f, 0.0f);
+                        }
+                        break;
+
+                    case ActionBuffer.BotRightMenuToBotLeftInvoker:
+                        { 
+                            float tm = bounds[0].x - menuCorners[3].x;
+                            nctx.plate.transform.position += new Vector3(tm, 0.0f, 0.0f);
+                        }
+                        break;
 
                     case ActionBuffer.TopLeftMenuToBotLeftInvoker:
                         { 
@@ -743,17 +883,25 @@ namespace PxPre.DropMenu
         }
 
         /// <summary>
+        /// Public low-level function to spawn a menu with custom attachment behaviour.
+        /// </summary>
+        public NodeContext CreateDropdownMenu(Node node, Vector3 [] bounds, StyleOverride overrideFlags, params ActionBuffer [] buffers)
+        { 
+            return CreateDropdownMenu(node, bounds, overrideFlags, false, buffers);
+        }
+
+        /// <summary>
         /// Create a dropdown menu.
         /// </summary>
         /// <param name="node">The menu to create.</param>
         /// <param name="addGoBack">If true, a go-back button is added at the start of the menu.</param>
         /// <param name="topLeftSpawn">The top left point of the menu.</param>
         /// <returns></returns>
-        public NodeContext CreateDropdownMenu(Node node, bool addGoBack, Vector3 topLeftSpawn)
+        public NodeContext CreateDropdownMenu(Node node, StyleOverride overrideFlags, bool addGoBack, Vector3 topLeftSpawn)
         { 
             // Deffer to subfunction. It seems this _CreateDropdownMenu is only called here. This might
             // be vestigial from a refactor.
-            NodeContext nctx = this._CreateDropdownMenu(node, addGoBack, topLeftSpawn);
+            NodeContext nctx = this._CreateDropdownMenu(node, addGoBack, overrideFlags, topLeftSpawn);
                 
             //this.onCreate?.Invoke(nctx);
             return nctx;
@@ -797,7 +945,7 @@ namespace PxPre.DropMenu
         /// <param name="addGoBack">If true, a go-back button is inject at the start of the menu.</param>
         /// <param name="topLeftSpawn">The UI position to create the menu.</param>
         /// <returns>The record of the created menu instance.</returns>
-        protected NodeContext _CreateDropdownMenu(Node node, bool addGoBack, Vector3 topLeftSpawn)
+        protected NodeContext _CreateDropdownMenu(Node node, bool addGoBack, StyleOverride overrideFlags, Vector3 topLeftSpawn)
         {
             Props props = this.spawner.props;
 
@@ -806,6 +954,7 @@ namespace PxPre.DropMenu
             UnityEngine.UI.Image imgMenu = goMenu.AddComponent<UnityEngine.UI.Image>();
             imgMenu.sprite = props.plate;
             imgMenu.type = UnityEngine.UI.Image.Type.Sliced;
+            imgMenu.color = props.menuPlateColor;
             RectTransform rtMenu = imgMenu.rectTransform;
             rtMenu.pivot = new Vector2(0.0f, 1.0f);
             rtMenu.anchorMin = new Vector2(0.0f, 1.0f);
@@ -824,18 +973,24 @@ namespace PxPre.DropMenu
 
             float maxXIco = 0.0f;
             float maxXLabel = 0.0f;
+            float maxXShortcut = 0.0f;
             float maxXSpawnArrow = 0.0f;
 
             bool atleastOne = false;
 
             NodeContext nctxRet = 
                 new NodeContext(
+                    spawnedSubmenus.Count == 0 ? null : spawnedSubmenus[spawnedSubmenus.Count - 1],
                     node,
                     imgMenu,
                     imgShadow);
 
             this.spawnedSubmenus.Add(nctxRet);
 
+            //      CREATE NEEDED UI ASSETS FOR MENU ELEMENTS
+            //
+            ////////////////////////////////////////////////////////////////////////////////
+            
             // Create assets and get total size values
             List< NodeCreationCache> childrenCreationCache = new List<NodeCreationCache>();
             foreach (Node n in this.GetMenuNodes(node, addGoBack, nctxRet))
@@ -860,24 +1015,18 @@ namespace PxPre.DropMenu
 
                     GameObject goText = new GameObject("Text");
                     goText.transform.SetParent(goEntry.transform, false);
-                    UnityEngine.UI.Text txtText = goText.AddComponent<UnityEngine.UI.Text>();
+                    TextMeshProUGUI txtText = goText.AddComponent<TextMeshProUGUI>();
                     txtText.color = props.entryFontColor;
                     txtText.fontSize = props.entryFontSize;
                     txtText.font = props.entryFont;
                     txtText.text = n.label;
-                    txtText.horizontalOverflow = HorizontalWrapMode.Overflow;
-                    txtText.verticalOverflow = VerticalWrapMode.Overflow;
+                    txtText.overflowMode = TextOverflowModes.Overflow;
                     txtText.rectTransform.anchorMin = new Vector2(0.0f, 0.0f);
                     txtText.rectTransform.anchorMax = new Vector2(1.0f, 1.0f);
                     txtText.rectTransform.pivot = new Vector2(0.0f, 0.5f);
-                    txtText.alignment = props.GetTextAnchorFromAlignment(nCpy.alignment, true);
-                    TextGenerationSettings tgs = txtText.GetGenerationSettings(new Vector2(float.PositiveInfinity, float.PositiveInfinity));
-                    tgs.scaleFactor = 1.0f;
-                    TextGenerator tg = txtText.cachedTextGenerator;
-                    Vector2 textSz = 
-                        new Vector2(
-                            Mathf.Ceil(tg.GetPreferredWidth(txtText.text, tgs) + 1.0f / goText.transform.lossyScale.x), 
-                            tg.GetPreferredHeight(txtText.text, tgs));
+                    txtText.verticalAlignment = VerticalAlignmentOptions.Middle;
+                    txtText.horizontalAlignment = props.GetTextAnchorFromAlignment(nCpy.alignment, true);
+                    Vector2 textSz = txtText.GetPreferredValues(txtText.text);
                     txtText.rectTransform.sizeDelta = textSz;
                     //
                     maxXLabel = Mathf.Max(maxXLabel, textSz.x);
@@ -885,10 +1034,34 @@ namespace PxPre.DropMenu
                     //
                     ncc.text = txtText;
 
-                    UnityEngine.UI.Button itemBtn = null;
+                    if(!string.IsNullOrEmpty(n.shortcut))
+                    { 
+                        GameObject goShortcutText = new GameObject("Shortcut Text");
+                        goShortcutText.transform.SetParent(goEntry.transform, false);
+                        TextMeshProUGUI txtShortcutText = goShortcutText.AddComponent<TextMeshProUGUI>();
+                        txtShortcutText.color = props.entryFontColor;
+                        txtShortcutText.fontSize = props.entryFontSize;
+                        txtShortcutText.font = props.entryFont;
+                        txtShortcutText.text = n.shortcut;
+                        txtShortcutText.overflowMode = TextOverflowModes.Overflow;
+                        txtShortcutText.rectTransform.anchorMin = new Vector2(1.0f, 0.0f); // Unlike the normal text, Note this anchors to the right side
+                        txtShortcutText.rectTransform.anchorMax = new Vector2(1.0f, 1.0f);
+                        txtShortcutText.rectTransform.pivot = new Vector2(0.0f, 0.5f);
+                        txtShortcutText.verticalAlignment = VerticalAlignmentOptions.Middle;
+                        txtShortcutText.horizontalAlignment = props.GetTextAnchorFromAlignment(Props.TextAlignment.Left, true);
+                        Vector2 shortcutSz = txtShortcutText.GetPreferredValues(txtShortcutText.text);
+                        txtShortcutText.rectTransform.sizeDelta = shortcutSz;
+                        //
+                        fyMax = Mathf.Max(fyMax, shortcutSz.y, props.minEntrySize);
+                        maxXShortcut = Mathf.Max(maxXShortcut, shortcutSz.x);
+                        //
+                        ncc.shortcut = txtShortcutText;
+                    }
+
+                    CtxButton itemBtn = null;
                     if(n.type == Node.Type.Action || n.type == Node.Type.GoBack)
                     { 
-                        UnityEngine.UI.Button actionBtn = goEntry.AddComponent<UnityEngine.UI.Button>();
+                        CtxButton actionBtn = goEntry.AddComponent<CtxButton>();
                         itemBtn = actionBtn;
 
                         actionBtn.targetGraphic = ncc.plate;
@@ -907,7 +1080,8 @@ namespace PxPre.DropMenu
                         goEntry.ETQ().AddOnPointerEnter(
                             (x)=>
                             { 
-                                this.PopMenu(node); 
+                                _OnHoverOverCtxButton(node, n, nctxRet);
+
                             });
 
                     }
@@ -915,7 +1089,7 @@ namespace PxPre.DropMenu
                     { 
                         // Do nothing with the button. We're just leveraging the 
                         // hover-over animations.
-                        UnityEngine.UI.Button menuBtn = goEntry.AddComponent<UnityEngine.UI.Button>();
+                        CtxButton menuBtn = goEntry.AddComponent<CtxButton>();
                         itemBtn = menuBtn;
 
                         menuBtn.targetGraphic = ncc.plate;
@@ -923,22 +1097,13 @@ namespace PxPre.DropMenu
                         goEntry.ETQ().AddOnPointerEnter(
                             (x)=>
                             {
-                                //// If the menu is already , pop children menus all the way back to it
-                                //if(this.PopMenu(nCpy) == false)
-                                //{
-                                //    // If not, another submenu might be up that we need to get rid of to make space
-                                //    // for this new submenu - in which case we pop back to the menu that is about to
-                                //    // spawn this submenu.
-                                //    this.PopMenu(node);
-                                //}
-
-                                if(this.PopMenu(node) == false)
-                                    return;
-
+                                _OnHoverOverCtxButton(node, n, nctxRet);
+                                
 
                                 this.CreateDropdownSubMenu(
                                     nCpy,
                                     nctxRet.hasScroll,
+                                    overrideFlags,
                                     imgEntry.rectTransform);
                             });
                     }
@@ -972,25 +1137,24 @@ namespace PxPre.DropMenu
                         cUse = n.color;
                     else if((n.flags & Flags.Selected) != 0)
                         cUse = props.selectedColor;
-                    //
-                    imgEntry.color = cUse;
 
                     if(itemBtn != null)
                     {
                         if((n.flags & Flags.Disabled) != 0)
                             itemBtn.interactable = false;
 
-                        UnityEngine.UI.ColorBlock cb = itemBtn.colors;
-                        cb.normalColor = cUse;
-                        cb.highlightedColor *= cUse;
-                        cb.pressedColor *= cUse;
-                        cb.disabledColor *= cUse;
-                        itemBtn.colors = cb;
+                        itemBtn.colors = props.entryButtonColor;
+                        imgEntry.color = cUse;
+                        nctxRet.buttonLookup.Add(n, itemBtn);
+                    }
+                    else
+                    { 
+                        imgEntry.color = cUse;
                     }
 
                     if(n.type == Node.Type.Menu)
                     {
-                        Vector2 v2Arrow = props.submenuSpawnArrow.rect.size;
+                        Vector2 v2Arrow = props.submenuSpawnArrow.rect.size * props.submenuArrowScale;
 
                         GameObject goArrow = new GameObject("Arrow");
                         goArrow.transform.SetParent(goEntry.transform);
@@ -998,8 +1162,8 @@ namespace PxPre.DropMenu
                         goArrow.transform.localScale = Vector3.one;
                         UnityEngine.UI.Image imgArrow = goArrow.AddComponent<UnityEngine.UI.Image>();
                         imgArrow.sprite = props.submenuSpawnArrow;
-                        imgArrow.rectTransform.anchorMin = new Vector2(0.0f, 1.0f);
-                        imgArrow.rectTransform.anchorMax = new Vector2(0.0f, 1.0f);
+                        imgArrow.rectTransform.anchorMin = new Vector2(1.0f, 1.0f);
+                        imgArrow.rectTransform.anchorMax = new Vector2(1.0f, 1.0f);
                         imgArrow.rectTransform.pivot = new Vector2(0.0f, 1.0f);
                         imgArrow.rectTransform.sizeDelta = v2Arrow;
 
@@ -1014,26 +1178,28 @@ namespace PxPre.DropMenu
                 }
                 else if(n.type == Node.Type.Separator)
                 { 
-                    float stotalX = props.minSplitter + props.splitterPadding.left + props.splitterPadding.right;
-                    float stotalY = props.splitter.rect.height + props.splitterPadding.top + props.splitterPadding.bottom;
+                    float splitterHeight = props.SplitterHeight();
+                    float stotalX = props.minSplitterWidth + props.splitterPadding.left + props.splitterPadding.right;
+                    float stotalY = splitterHeight + props.splitterPadding.top + props.splitterPadding.bottom;
 
                     GameObject goSep = new GameObject("Separator");
                     goSep.transform.SetParent(goMenu.transform);
                     goSep.transform.localRotation = Quaternion.identity;
                     goSep.transform.localScale = Vector3.one;
-                    UnityEngine.UI.Image imgSpe = goSep.AddComponent<UnityEngine.UI.Image>();
-                    imgSpe.sprite = props.splitter;
-                    imgSpe.type = UnityEngine.UI.Image.Type.Sliced;
-                    imgSpe.rectTransform.anchorMin = new Vector2(0.0f, 1.0f);
-                    imgSpe.rectTransform.anchorMax = new Vector2(0.0f, 1.0f);
-                    imgSpe.rectTransform.pivot = new Vector2(0.0f, 1.0f);
+                    UnityEngine.UI.Image imgSep = goSep.AddComponent<UnityEngine.UI.Image>();
+                    imgSep.sprite = props.splitter;
+                    imgSep.color = props.splitterColor;
+                    imgSep.type = UnityEngine.UI.Image.Type.Sliced;
+                    imgSep.rectTransform.anchorMin = new Vector2(0.0f, 1.0f);
+                    imgSep.rectTransform.anchorMax = new Vector2(0.0f, 1.0f);
+                    imgSep.rectTransform.pivot = new Vector2(0.0f, 1.0f);
 
-                    ncc.plate = imgSpe;
+                    ncc.plate = imgSep;
 
                     ncc.height = 
                         props.splitterPadding.top + 
                         props.splitterPadding.bottom + 
-                        props.splitter.rect.height;
+                        splitterHeight;
                 }
                 else
                 { 
@@ -1044,34 +1210,127 @@ namespace PxPre.DropMenu
                 childrenCreationCache.Add(ncc);
             }
 
+            // In case falling into an exact pixel width visually improves things, and 1.0f
+            // extra padding in case floating point error caused truncation somewhere.
+            // (plus a little extra padding never hurt nobody!)
             maxXLabel = Mathf.Ceil(maxXLabel) + 1.0f;
 
-            // Layout internals
-            float fY = props.outerPadding.top;
+            if(maxXShortcut != 0.0f)
+                maxXShortcut = Mathf.Ceil(maxXShortcut) + 1.0f;
 
-            float fX = props.entryPadding.left;
-            float xIcoStart = fX;
-            float xTextStart = fX + maxXIco;
-            // Offset where the text starts
-            if(maxXIco != 0.0f)
-                xTextStart += props.iconTextPadding;
+            //      CREATE TITLE
+            //
+            ////////////////////////////////////////////////////////////////////////////////
+            bool useTitle = this.spawner.props.showTitles;
+            if((overrideFlags & StyleOverride.ForceUseTitle) != 0)
+                useTitle = true;
+            if((overrideFlags & StyleOverride.ForceNoTitle) != 0 || string.IsNullOrEmpty(node.label))
+                useTitle = false;
 
-            // Define where the arrow would start
-            float xArrowIco = xTextStart + maxXLabel;
-            float xTextFromRight = props.entryPadding.right;
-            // If relevant, take into account the padding.
-            if(maxXSpawnArrow != 0.0f)
-            {
-                xArrowIco += props.textArrowPadding;
-                xTextFromRight += maxXSpawnArrow + props.textArrowPadding;
+            float titleHeight = 0.0f;
+            float titleWidth = 0.0f;
+            Vector2 titleExtents = Vector2.zero;
+            if(useTitle)
+            { 
+                GameObject goTitle = new GameObject("Title");
+                TMPro.TextMeshProUGUI title = goTitle.AddComponent<TMPro.TextMeshProUGUI>();
+                title.font = props.titleFont;
+                title.color = props.titleFontColor;
+                title.fontSize = props.titleFontSize;
+                title.horizontalAlignment = HorizontalAlignmentOptions.Center;
+                title.verticalAlignment = VerticalAlignmentOptions.Middle;
+                title.text = node.label;
+                title.overflowMode = TextOverflowModes.Overflow;
+                titleExtents = title.GetPreferredValues(node.label);
+                titleWidth = titleExtents.x + props.titlePadding.left + this.spawner.props.titlePadding.right;
+                titleHeight = titleExtents.y + props.titlePadding.top + this.spawner.props.titlePadding.bottom;
+
+                if(this.spawner.props.useTitlePlate)
+                { 
+                    GameObject goTitlePlate = new GameObject("TitlePlate");
+                    UnityEngine.UI.Image imgTitlePlate = goTitlePlate.AddComponent<UnityEngine.UI.Image>();
+                    imgTitlePlate.color = props.titleColor;
+                    RectTransform rtTitlePlate = imgTitlePlate.rectTransform;
+                    rtTitlePlate.SetParent(rtMenu, false);
+                    rtTitlePlate.anchorMin  = new Vector2(0.0f, 1.0f);
+                    rtTitlePlate.anchorMax  = new Vector2(1.0f, 1.0f);
+                    rtTitlePlate.pivot      = new Vector2(0.0f, 1.0f);
+                    rtTitlePlate.offsetMin  = new Vector2(0.0f, -titleHeight);
+                    rtTitlePlate.offsetMax  = new Vector2(0.0f, 0.0f);
+
+                    title.transform.SetParent(rtTitlePlate, false);
+                }
+                else
+                { 
+                    title.transform.SetParent(rtMenu);
+                }
+                RectTransform rtTitle = title.rectTransform;
+                if(props.titleCentered)
+                { 
+                    rtTitle.anchorMin = new Vector2(0.0f, 1.0f);
+                    rtTitle.anchorMax = new Vector2(1.0f, 1.0f);
+                    rtTitle.pivot = new Vector2(0.5f, 1.0f);
+                    rtTitle.offsetMin = new Vector2(props.titlePadding.left, -(props.titlePadding.top + titleExtents.y));
+                    rtTitle.offsetMax = new Vector2(-props.titlePadding.right, -props.titlePadding.top);
+                }
+                else
+                { 
+                    rtTitle.anchorMin = new Vector2(0.0f, 1.0f);
+                    rtTitle.anchorMax = new Vector2(0.0f, 1.0f);
+                    rtTitle.sizeDelta = titleExtents;
+                    title.rectTransform.anchoredPosition = 
+                        new Vector2(
+                            props.titlePadding.left + titleExtents.x * 0.5f, 
+                            -props.titlePadding.top - titleExtents.y * 0.5f);
+                }
             }
+            //      LAYOUT INTERNAL MENU ELEMENTS
+            //
+            ////////////////////////////////////////////////////////////////////////////////
 
-            float xWidth = xArrowIco + maxXSpawnArrow + props.splitterPadding.right;
+            // Layout internals
+            float fY = titleHeight + props.outerPadding.top;
+
+            float xIcoStart = props.entryPadding.left;
+            // The logic could probably be combined between these various calculations, but for simplicity,
+            // they're going to start from scratch.
+            //
+            // The entire width of the entry:
+            float xWidth = props.entryPadding.left + props.entryPadding.right + maxXLabel;
+
+            if(maxXIco != 0.0f)
+                xWidth += props.iconTextPadding + maxXIco;
+            if(maxXSpawnArrow != 0.0f)
+                xWidth += maxXSpawnArrow + props.textArrowPadding;
+            if(maxXShortcut != 0.0f)
+                xWidth += props.textLabelShortcutPadding + maxXShortcut;
+
+            xWidth = Mathf.Max(xWidth, props.minEntryWidth, props.titlePadding.left + props.titlePadding.right + titleExtents.x);
+
+            // Where the text starts from the left, and where it end from the right
+            float xTextL = props.entryPadding.left;
+            float xTextR = props.entryPadding.right;
+            if(maxXIco != 0.0f)
+                xTextL += maxXIco + props.iconTextPadding;
+            if(maxXSpawnArrow != 0.0f)
+                xTextR += maxXSpawnArrow + props.textArrowPadding;
+            if(maxXShortcut != 0.0f)
+                xTextR += props.textLabelShortcutPadding + maxXShortcut;
+
+            // Where the submenu arrow will be placed from the right
+            float xSubmenuArrow = props.entryPadding.right + maxXSpawnArrow;
+
+            // Where shorcuts will be placed from the right
+            float xShortCL = props.entryPadding.right + maxXShortcut;
+            float xShortCR = props.entryPadding.right;
+            if(maxXSpawnArrow != 0.0f)
+                xShortCL += maxXSpawnArrow + props.textArrowPadding;
+
 
             // Do the alignment of content.
-            xWidth += props.entryPadding.right;
             atleastOne = false;
             float finalMenuWidth = xWidth + props.outerPadding.left + props.outerPadding.right;
+            finalMenuWidth = Mathf.Max(finalMenuWidth, titleWidth);
             for (int i = 0; i < childrenCreationCache.Count; ++i)
             {
                 NodeCreationCache ccache = childrenCreationCache[i];
@@ -1098,8 +1357,8 @@ namespace PxPre.DropMenu
                         new Vector2(
                             xWidth, ccache.height);
 
-                    ccache.text.rectTransform.offsetMin = new Vector2(xTextStart, props.entryPadding.bottom);
-                    ccache.text.rectTransform.offsetMax = new Vector2(-xTextFromRight, -props.entryPadding.top);
+                    ccache.text.rectTransform.offsetMin = new Vector2(xTextL, props.entryPadding.bottom);
+                    ccache.text.rectTransform.offsetMax = new Vector2(-xTextR, -props.entryPadding.top);
 
                     if(ccache.icon != null)
                     { 
@@ -1109,12 +1368,18 @@ namespace PxPre.DropMenu
                                 -props.entryPadding.top - (height - ccache.icon.sprite.rect.height) * 0.5f);
                     }
 
+                    if(ccache.shortcut != null)
+                    { 
+                        ccache.shortcut.rectTransform.offsetMin = new Vector2(-xShortCL, props.entryPadding.bottom);
+                        ccache.shortcut.rectTransform.offsetMax = new Vector2(-xShortCR, -props.entryPadding.top);
+                    }
+
                     if(ccache.arrow != null)
                     {
                         ccache.arrow.rectTransform.anchoredPosition = 
                             new Vector2(
-                                xArrowIco ,
-                                -props.entryPadding.top - (height - ccache.arrow.sprite.rect.height) * 0.5f);
+                                -xSubmenuArrow,
+                                -props.entryPadding.top - (height - ccache.arrow.rectTransform.sizeDelta.y) * 0.5f);
                     }
 
                     fY += ccache.height;
@@ -1130,7 +1395,7 @@ namespace PxPre.DropMenu
                     ccache.plate.rectTransform.sizeDelta = 
                         new Vector2(
                             finalMenuWidth - leftPad - rightPad, 
-                            props.splitter.rect.height );
+                            props.SplitterHeight() );
 
                     fY += ccache.height;
                 }
@@ -1144,6 +1409,7 @@ namespace PxPre.DropMenu
 
             rtMenu.anchoredPosition = Vector2.zero;
             rtMenu.position = topLeftSpawn;
+
 
             //      CHECK IF SCROLLMODE IS NEEDED IF MENU TALLER THAN CANVAS
             ////////////////////////////////////////////////////////////////////////////////
@@ -1299,6 +1565,45 @@ namespace PxPre.DropMenu
             nctxRet.LayoutShadow(this.spawner.props, baseForShadowZ);
 
             return nctxRet;
+        }
+
+        private void _OnHoverOverCtxButton(Node parentNode, Node childNode, NodeContext nctx)
+        {
+            // Also highlight the submenu we're on.
+            // We may want to make this optional, both for client preference, and for
+            // optimization purposes (so we're not highlighting everything on the parent
+            // for every hover-over of a child subment button.
+            if(nctx.parent != null)
+                nctx.parent.ResetAll(nctx.menu);
+
+            // If anything else was already forced highlighted (previously from the line above)
+            // and we move back from the submenu to the parent, make sure to clear that stuff
+            // out
+            nctx.ResetAll(childNode);
+
+            // Close everything in the submenu hierarchy deeper than this menu.
+            if(this.PopMenu(parentNode) == false)
+                return;
+        }
+
+        /// <summary>
+        /// Custom button used for the menu system - we override it to gain access to protected stuff.
+        /// </summary>
+        internal class CtxButton : UnityEngine.UI.Button
+        {
+            public enum SelectionState
+            {
+                Normal      = UnityEngine.UI.Selectable.SelectionState.Normal,
+                Highlighted = UnityEngine.UI.Selectable.SelectionState.Highlighted,
+                Pressed     = UnityEngine.UI.Selectable.SelectionState.Pressed,
+                Selected    = UnityEngine.UI.Selectable.SelectionState.Selected,
+                Disabled    = UnityEngine.UI.Selectable.SelectionState.Disabled
+            }
+
+            public void ForceSelectionState(SelectionState state, bool instant)
+            { 
+                this.DoStateTransition((UnityEngine.UI.Selectable.SelectionState)state, instant);
+            }
         }
     }
 }

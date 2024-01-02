@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 using UnityEngine;
+using TMPro;
 
 namespace PxPre.DropMenu
 {
@@ -136,10 +137,39 @@ namespace PxPre.DropMenu
             Default
         }
 
+        public enum ModalCloseMethod
+        { 
+            /// <summary>
+            /// A single mouse down will close the menu system.
+            /// </summary>
+            PressDown,
+
+            /// <summary>
+            /// A mouse click must be pressed and released to close the menu system
+            /// </summary>
+            FullClick
+        }
+
+        /// <summary>
+        /// What kind of interaction with the modal backplate will close the menu system?
+        /// </summary>
+        public ModalCloseMethod fallthroughCloseMethod = ModalCloseMethod.PressDown;
+
+        /// <summary>
+        /// If the modal plate is unwanted, set this to false to avoid creating it.
+        /// A small performance gain compared to setting the modal plate to transparent.
+        /// </summary>
+        public bool useImageForModalPlate = true;
+
         /// <summary>
         /// The color and opacity of the modal plate hosting the dropdown menu.
         /// </summary>
         public Color modalPlateColor;
+
+        /// <summary>
+        /// The color of menus and submenu plates.
+        /// </summary>
+        public Color menuPlateColor = Color.white;
 
         /// <summary>
         /// If true, show the titles of menus
@@ -163,17 +193,43 @@ namespace PxPre.DropMenu
         /// The font for the menu title.
         /// </summary>
         /// <remarks>Menu titles are currently not implemented.</remarks>
-        public Font titleFont;
+        public TMP_FontAsset titleFont;
+
+        /// <summary>
+        /// The area around the text for the title (it used).
+        /// </summary>
+        public Padding titlePadding;
+
+        /// <summary>
+        /// If true, create a new image to house the title text.
+        /// </summary>
+        public bool useTitlePlate = true;
+
+        /// <summary>
+        /// If useTitlePlate is true, what color should the plate be?
+        /// </summary>
+        public Color titleColor = new Color(0.5f, 0.5f, 0.5f, 1.0f);
+
+        public Color titleFontColor = Color.black;
+
+        public float titleFontSize = 20.0f;
+
+        public bool titleCentered = true;
 
         /// <summary>
         /// The font for labels, such as the text for actions and submenus.
         /// </summary>
-        public Font entryFont;
+        public TMP_FontAsset entryFont;
 
         /// <summary>
         /// The font color for labels.
         /// </summary>
         public Color entryFontColor = Color.black;
+
+        /// <summary>
+        /// Transition colors for buttons.
+        /// </summary>
+        public UnityEngine.UI.ColorBlock entryButtonColor = UnityEngine.UI.ColorBlock.defaultColorBlock;
 
         /// <summary>
         /// The minimum space on all sides of a menu entry before reaching
@@ -191,11 +247,19 @@ namespace PxPre.DropMenu
         /// </summary>
         public float minEntrySize = 20.0f;
 
+        public float minEntryWidth = 100.0f;
+
         /// <summary>
         /// The sprite placed on the right of submenu menu items to visually identify
         /// them as submenus.
         /// </summary>
         public Sprite submenuSpawnArrow;
+
+        /// <summary>
+        /// The amount to scale the submenuSpawnArrow shown. Typically if the sprite it larger
+        /// than what's needed and should be scaled down.
+        /// </summary>
+        public float submenuArrowScale = 1.0f;
 
         /// <summary>
         /// The sprite used as the plate for actions and submenus.
@@ -212,6 +276,12 @@ namespace PxPre.DropMenu
         /// and spawn arrow.
         /// </summary>
         public float textArrowPadding = 5.0f;
+
+        /// <summary>
+        /// If showing shortcut text, how much minimum horizontal space should there 
+        /// be between the label and the displayed shortcut.
+        /// </summary>
+        public float textLabelShortcutPadding = 20.0f;
 
         /// <summary>
         /// The sprite for the dropdown menu's shadow.
@@ -238,15 +308,23 @@ namespace PxPre.DropMenu
         /// </summary>
         public Sprite splitter;
 
+        public Color splitterColor = Color.white;
+
         /// <summary>
         /// The padding on all sides of a splitter.
         /// </summary>
         public Padding splitterPadding;
 
         /// <summary>
-        /// The height of a splitter.
+        /// The minimum width of a splitter.
         /// </summary>
-        public float minSplitter = 10.0f;
+        public float minSplitterWidth = 10.0f;
+
+        /// <summary>
+        /// The minimum height of a splitter. This can be overridden if the splitter sprite
+        /// is taller than this minimum.
+        /// </summary>
+        public float minSplitterheight = 5.0f;
 
         /// <summary>
         /// The vertical padding between menu items.
@@ -306,32 +384,40 @@ namespace PxPre.DropMenu
         public string goBackMessage = "Go Back";
 
         /// <summary>
-        /// Given a TextAlignment value, convert it into a TextAnchor.
+        /// Given a TextAlignment value, convert it into a TMP alignment.
         /// </summary>
         /// <param name="alignment">Dropdown menu text alignment to convert.</param>
         /// <param name="canDefault">
         /// If true, default values will convert to the Prop's defined default.
         /// Else an nonspecific constant value is used.</param>
         /// <returns>The converted Unity TextAnchor alighment.</returns>
-        public TextAnchor GetTextAnchorFromAlignment(TextAlignment alignment, bool canDefault)
+        public HorizontalAlignmentOptions GetTextAnchorFromAlignment(TextAlignment alignment, bool canDefault)
         { 
             switch(alignment)
             { 
                 case TextAlignment.Left:
-                    return TextAnchor.MiddleLeft;
+                    return HorizontalAlignmentOptions.Left;
 
                 case TextAlignment.Middle:
-                    return TextAnchor.MiddleCenter;
+                    return HorizontalAlignmentOptions.Center;
 
                 case TextAlignment.Right:
-                    return TextAnchor.MiddleRight;
+                    return HorizontalAlignmentOptions.Right;
 
                 default:
                     if(canDefault == false)
-                        return TextAnchor.MiddleLeft;
+                        return HorizontalAlignmentOptions.Left;
 
                     return GetTextAnchorFromAlignment(this.defaultTextAlignment, false);
             }
+        }
+
+        public float SplitterHeight()
+        { 
+            float ret = minSplitterheight;
+            if(splitter != null)
+                ret = Mathf.Max(ret, splitter.rect.height);
+            return ret;
         }
     }
 }

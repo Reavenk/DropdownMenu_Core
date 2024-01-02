@@ -43,12 +43,24 @@ namespace PxPre.DropMenu
         /// <summary>
         /// A callback for when the background modal plate is created.
         /// </summary>
-        public System.Action<UnityEngine.UI.Image> onCreatedModalPlate;
+        public System.Action<RectTransform, UnityEngine.UI.Image> onCreatedModalPlate;
 
         /// <summary>
         /// A callback to listen to when a submenu is opened.
         /// </summary>
         public System.Action<SpawnContext, SpawnContext.NodeContext> onSubMenuOpened;
+
+        /// <summary>
+        /// Called when a menu heirarchy has been shown.
+        /// Only 1 menu hierarchy should be shown at a time, so you should be able to 
+        /// expect a following onMenuSessionEnded before the next onMenuSessionStarted.
+        /// </summary>
+        public System.Action<SpawnContext> onMenuSessionStarted;
+
+        /// <summary>
+        /// Called when a menu hierarchy has been closed.
+        /// </summary>
+        public System.Action<SpawnContext> onMenuSessionEnded;
 
         // TODO: Remove
         public RectTransform CreateMenu(Canvas canvas, Vector2 pos)
@@ -64,10 +76,10 @@ namespace PxPre.DropMenu
         /// <param name="rootNode">The root node of the menu to spawn.</param>
         /// <param name="rtInvokingRect">The RectTransform to create the menu around.</param>
         /// <returns>The context information of the created menu.</returns>
-        public SpawnContext CreateDropdownMenu(Canvas canvas, Node rootNode, RectTransform rtInvokingRect)
+        public SpawnContext CreateDropdownMenu(Canvas canvas, Node rootNode, RectTransform rtInvokingRect, StyleOverride overrideFlags = StyleOverride.TitleRootOnly)
         {
             SpawnContext sc = new SpawnContext(canvas, this);
-            sc.CreateDropdownMenu(rootNode, rtInvokingRect);
+            sc.CreateDropdownMenu(rootNode, overrideFlags, rtInvokingRect);
             return sc;
         }
 
@@ -78,10 +90,10 @@ namespace PxPre.DropMenu
         /// <param name="rootNode">The root node of the menu to spawn.</param>
         /// <param name="loc">The UI location to spawn the menu.</param>
         /// <returns>The context information of the created menu.</returns>
-        public SpawnContext CreateDropdownMenu(Canvas canvas, Node rootNode, Vector3 loc)
+        public SpawnContext CreateDropdownMenu(Canvas canvas, Node rootNode, Vector3 loc, StyleOverride overrideFlags = StyleOverride.TitleRootOnly)
         {
             SpawnContext sc = new SpawnContext(canvas, this);
-            sc.CreateDropdownMenu(rootNode, loc);
+            sc.CreateDropdownMenu(rootNode, overrideFlags, loc);
             return sc;
         }
     }

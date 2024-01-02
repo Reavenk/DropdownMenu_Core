@@ -52,6 +52,24 @@ namespace PxPre.DropMenu
         CenterScrollSel = 1 << 4,
     }
 
+    public enum StyleOverride
+    { 
+        /// <summary>
+        /// Only the root menu will show a title
+        /// </summary>
+        TitleRootOnly = 1 << 0,
+
+        /// <summary>
+        /// Force none of the menus having a title, regardless of the style
+        /// </summary>
+        ForceNoTitle = 1 << 1,
+
+        /// <summary>
+        /// Force all of the menus to have a title, regardless of the style
+        /// </summary>
+        ForceUseTitle = 1 << 2
+    }
+
     /// <summary>
     /// An entry in the dropdown menu. Theses nodes create a tree datastructure that
     /// define the contents of a menu (and their submenus).
@@ -90,6 +108,13 @@ namespace PxPre.DropMenu
         /// The label to display in the menu. Only relevant for certain node types.
         /// </summary>
         public string label = "";
+
+        /// <summary>
+        /// The optional shortcut text that follows the label.
+        /// KEYBOARD ACCELERATOR FUNCTIONALITY IS NOT IMPLEMENTED IN THIS MENU SYSTEM,
+        /// THIS IS ONLY AN AESTHETIC FEATURE.
+        /// </summary>
+        public string shortcut = "";
 
         /// <summary>
         /// The type of node.
@@ -168,12 +193,17 @@ namespace PxPre.DropMenu
         /// <summary>
         /// Adds a plain text Action node to the end of the menu.
         /// </summary>
-        /// <param name="label"></param>
-        /// <param name="onSel"></param>
-        /// <returns></returns>
+        public Node AddAction(string label, string shortcut, System.Action onSel)
+        { 
+            return this.AddAction(null, label, shortcut, onSel);
+        }
+
+        /// <summary>
+        /// Adds a plain text Action node to the end of the menu.
+        /// </summary>
         public Node AddAction(string label, System.Action onSel)
         { 
-            return this.AddAction(null, label, onSel);
+            return this.AddAction(null, label, string.Empty, onSel);
         }
 
         /// <summary>
@@ -183,9 +213,14 @@ namespace PxPre.DropMenu
         /// <param name="label">The label displayed for the node entry.</param>
         /// <param name="onSel">The action to perform if the node's button is clicked.</param>
         /// <returns></returns>
+        public Node AddAction(Sprite icon, string label, string shortcut, System.Action onSel)
+        {
+            return this.AddAction(icon, Color.white, label, shortcut, onSel);
+        }
+
         public Node AddAction(Sprite icon, string label, System.Action onSel)
         {
-            return this.AddAction(icon, Color.white, label, onSel);
+            return this.AddAction(icon, Color.white, label, string.Empty, onSel);
         }
 
         /// <summary>
@@ -197,12 +232,13 @@ namespace PxPre.DropMenu
         /// <param name="onSel">The action to perform if the node's button is clicked.</param>
         /// <param name="flags">The node property flags.</param>
         /// <returns></returns>
-        public Node AddAction(Sprite icon, Color color, string label, System.Action onSel, Flags flags = 0)
+        public Node AddAction(Sprite icon, Color color, string label, string shortcut, System.Action onSel, Flags flags = 0)
         {
             Node n = new Node(label, onSel);
             n.sprite = icon;
             n.color = color;
             n.flags = flags;
+            n.shortcut = shortcut;
             this.AddChild(n);
             return n;
         }

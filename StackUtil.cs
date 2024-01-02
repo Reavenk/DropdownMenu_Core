@@ -117,7 +117,7 @@ namespace PxPre.DropMenu
         /// <param name="onSel">The action's callback.</param>
         public void AddAction(Color color, string label, System.Action onSel)
         {
-            this.curr.AddAction(null, color, label, onSel);
+            this.curr.AddAction(null, color, label, string.Empty, onSel);
         }
 
         /// <summary>
@@ -131,7 +131,7 @@ namespace PxPre.DropMenu
         /// <param name="flags">Node properties of the action's menu item.</param>
         public void AddAction(Sprite icon, Color color, string label, System.Action onSel, Flags flags = 0)
         { 
-            this.curr.AddAction(icon, color, label, onSel, flags|Flags.Colored);
+            this.curr.AddAction(icon, color, label, string.Empty, onSel, flags|Flags.Colored);
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace PxPre.DropMenu
         /// <param name="onSel">The action's callback.</param>
         public void AddAction(Sprite icon, Color color, string label, System.Action onSel)
         { 
-            this.curr.AddAction(icon, color, label, onSel, Flags.Colored);
+            this.curr.AddAction(icon, color, label, string.Empty, onSel, Flags.Colored);
         }
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace PxPre.DropMenu
         /// <param name="onSel">The action's callback.</param>
         public void AddAction(bool sel, Sprite icon, Color color, string label, System.Action onSel)
         { 
-            this.curr.AddAction(icon, color, label, onSel, sel ? Flags.Selected : 0);
+            this.curr.AddAction(icon, color, label, string.Empty, onSel, sel ? Flags.Selected : 0);
         }
 
         /// <summary>
@@ -169,7 +169,7 @@ namespace PxPre.DropMenu
         /// <param name="onSel">The action's callback.</param>
         public void AddAction(Sprite icon, string label, System.Action onSel)
         { 
-            this.curr.AddAction(icon, Color.white, label, onSel, 0);
+            this.curr.AddAction(icon, Color.white, label, string.Empty, onSel, 0);
         }
 
         /// <summary>
@@ -181,7 +181,100 @@ namespace PxPre.DropMenu
         /// <param name="onSel">The action's callback.</param>
         public void AddAction(bool sel, Sprite icon, string label, System.Action onSel)
         {
-            this.curr.AddAction(icon, Color.white, label, onSel, sel ? Flags.Selected : 0);
+            this.curr.AddAction(icon, Color.white, label, string.Empty, onSel, sel ? Flags.Selected : 0);
+        }
+        
+        /// <summary>
+        /// Add an action to the top node of the stack, uses property colors.
+        /// </summary>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="shortcut">The displayed action keyboard shortcut.</param>
+        /// <param name="onSel">The action's callback.</param>
+        /// <param name="sel">If true, the menu item is given the selection color.</param>
+        public void AddAction(string label, string shortcut, System.Action onSel, bool sel = false)
+        { 
+            this.curr.AddAction(label, shortcut, onSel);
+        }
+
+        /// <summary>
+        /// Add an action to the top node of the stack, uses a color override.
+        /// </summary>
+        /// <param name="color">The color to override the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="shortcut">The displayed action keyboard shortcut.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(Color color, string label, string shortcut, System.Action onSel)
+        {
+            this.curr.AddAction(null, color, label, shortcut, onSel);
+        }
+
+        /// <summary>
+        /// Add an action to the top node of the stack. The method provides all
+        /// options for defining an action node.
+        /// </summary>
+        /// <param name="icon">The icon to draw with the menu item.</param>
+        /// <param name="color">The color to override the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="shortcut">The displayed action keyboard shortcut.</param>
+        /// <param name="onSel">The action's callback.</param>
+        /// <param name="flags">Node properties of the action's menu item.</param>
+        public void AddAction(Sprite icon, Color color, string label, string shortcut, System.Action onSel, Flags flags = 0)
+        { 
+            this.curr.AddAction(icon, color, label, shortcut, onSel, flags|Flags.Colored);
+        }
+
+        /// <summary>
+        /// Add an action to the top node of the stack. Includes parameters for
+        /// an icon and color override.
+        /// </summary>
+        /// <param name="icon">The icon to draw with the menu item.</param>
+        /// <param name="color">The color to override the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="shortcut">The displayed action keyboard shortcut.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(Sprite icon, Color color, string label, string shortcut, System.Action onSel)
+        { 
+            this.curr.AddAction(icon, color, label, shortcut, onSel, Flags.Colored);
+        }
+
+        /// <summary>
+        /// Adds an action that's either selected or unselected, depending on a specified bool parameter.
+        /// This version also has a color override.
+        /// </summary>
+        /// <param name="sel">The selection state of the action.</param>
+        /// <param name="icon">The icon to draw with the menu item.</param>
+        /// <param name="color">The color to override the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="shortcut">The displayed action keyboard shortcut.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(bool sel, Sprite icon, Color color, string label, string shortcut, System.Action onSel)
+        { 
+            this.curr.AddAction(icon, color, label, shortcut, onSel, sel ? Flags.Selected : 0);
+        }
+
+        /// <summary>
+        /// Adds an action with a sprite and icon.
+        /// </summary>
+        /// <param name="icon">The icon to draw with the menu.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="shortcut">The displayed action keyboard shortcut.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(Sprite icon, string label, string shortcut, System.Action onSel)
+        { 
+            this.curr.AddAction(icon, Color.white, label, shortcut, onSel, 0);
+        }
+
+        /// <summary>
+        /// Adds an action that's either selected or unselected, depending on a specified bool parameter.
+        /// </summary>
+        /// <param name="sel">The selection state of the action.</param>
+        /// <param name="icon">The icon to draw with the menu item.</param>
+        /// <param name="label">The label of the menu item.</param>
+        /// <param name="shortcut">The displayed action keyboard shortcut.</param>
+        /// <param name="onSel">The action's callback.</param>
+        public void AddAction(bool sel, Sprite icon, string label, string shortcut, System.Action onSel)
+        {
+            this.curr.AddAction(icon, Color.white, label, shortcut, onSel, sel ? Flags.Selected : 0);
         }
     }
 }

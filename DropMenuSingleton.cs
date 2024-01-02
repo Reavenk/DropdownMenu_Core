@@ -61,5 +61,47 @@ namespace PxPre.DropMenu
             instance = this;
             this.menu = this.GetComponent<DropMenuSpawner>();
         }
+
+        /// <summary>
+        /// If a menu is created with this class's Create*(), it's tracked as the singleton
+        /// menu, which there should only ever be 1 active instance of at any time.
+        /// </summary>
+        private static SpawnContext spawnContext = null;
+
+        public static SpawnContext CreateDropdownMenu(Canvas canvas, Node rootNode, RectTransform rtInvokingRect, StyleOverride overrideFlags = 0)
+        { 
+            var menu = MenuInst.CreateDropdownMenu(canvas, rootNode, rtInvokingRect, overrideFlags);
+            SetupSingletonMenu(menu);
+            return menu;
+        }
+
+        public static SpawnContext CreateDropdownMenu(Canvas canvas, Node rootNode, Vector3 loc, StyleOverride overrideFlags = 0)
+        { 
+            var menu = MenuInst.CreateDropdownMenu(canvas, rootNode, loc, overrideFlags);
+            SetupSingletonMenu(menu);
+            return menu;
+        }
+
+        public static bool DestroySingletonMenu()
+        { 
+            if(spawnContext == null)
+                return false;
+
+            spawnContext.Destroy();
+            Debug.Assert(spawnContext == null);
+            return true;
+        }
+
+        public static void SetupSingletonMenu(SpawnContext ctx)
+        { 
+            if(spawnContext != null)
+            { 
+                spawnContext.Destroy();
+                Debug.Assert(spawnContext == null);
+            }
+
+            spawnContext = ctx;
+            ctx.onMenuSessionEnded += () => {  spawnContext = null; };
+        }
     }
 }
